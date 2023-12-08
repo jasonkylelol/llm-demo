@@ -1,5 +1,4 @@
 from langchain.llms.huggingface_text_gen_inference import HuggingFaceTextGenInference
-from langchain_experimental.chat_models import Llama2Chat
 from langchain.prompts import (
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
@@ -38,7 +37,6 @@ def init_chain():
         do_sample=True,
         callbacks=[callbk_handler]
     )
-    # model = Llama2Chat(llm=llm)
 
     template_messages = [
         SystemMessagePromptTemplate.from_template("You are a helpful assistant"),
@@ -50,8 +48,7 @@ def init_chain():
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     output_parser = StrOutputParser()
 
-    # chain = LLMChain(llm=model, prompt=prompt_template, verbose=True, memory=memory)
-    # chain = prompt_template | model | output_parser
+    # chain = prompt_template | llm | output_parser
     chain = (
         RunnablePassthrough.assign(
             chat_history=RunnableLambda(memory.load_memory_variables) | itemgetter("chat_history")
@@ -62,7 +59,6 @@ def init_chain():
     )
 
 async def llm_call(message):
-    # print(chain.run(text=message))
     # print(prompt_template.invoke({"text": message}).to_string())
     # print(llm.invoke(prompt_template.invoke({"text": message})))
     # print(memory.load_memory_variables({}))
