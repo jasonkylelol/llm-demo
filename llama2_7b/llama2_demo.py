@@ -6,11 +6,11 @@ model_path = '/root/huggingface/models/meta-llama/Llama-2-7b-chat-hf'
 
 max_new_tokens=256
 top_k=50
-top_p=0.05
-temperature=0.05
+top_p=0.65
+temperature=0.95
 
 
-model = AutoModelForCausalLM.from_pretrained(model_path, device_map="cuda:1",
+model = AutoModelForCausalLM.from_pretrained(model_path, device_map="cuda:2",
     load_in_4bit=True, torch_dtype=torch.bfloat16)
 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
 pipe = pipeline(
@@ -31,7 +31,7 @@ pipe = pipeline(
 
 def predict(message, history):
     history_transformer_format = history + [[message, ""]]
-    messages = []
+    messages = [{"role": "system", "content": "You always answer like a gangster"}] # not working
     for item in history_transformer_format:
         messages.append({"role": "user", "content": item[0]})
         if item[1] != "":
