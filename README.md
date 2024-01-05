@@ -1,7 +1,7 @@
 # llm-demo
 huggingface llm demos
 
-- zephyr_7b_gradio_demo.py `HuggingFaceH4/zephyr-7b-beta chat model with gradio UI, model loaded manually`
-- zephyr_7b_by_tgi_with_gradio.py `HuggingFaceH4/zephyr-7b-beta chat model with gradio UI, model serving by huggingface TGI`
-- tgi_launch.sh `tgi image docker launch script`
+- zephyr_7b `HuggingFaceH4/zephyr-7b-beta chat model with gradio UI, model serving by huggingface TGI`
 - langchain `langchain implementation`
+- llama2_7b `for meta-llama/Llama-2-7b-chat-hf`
+- tts `text-to-speech`
