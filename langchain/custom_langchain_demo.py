@@ -17,10 +17,10 @@ from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 import sys, asyncio
 from operator import itemgetter
 
-global chain, queue, prompt_template, memory
+global chain, queue, memory
 
 def init_chain():
-    global chain, queue, prompt_template, memory
+    global chain, queue, memory
 
     queue = asyncio.Queue()
     callbk_handler = CustomCallbkHandler(queue)
@@ -44,7 +44,7 @@ def init_chain():
         HumanMessagePromptTemplate.from_template("{text}"),
         AIMessagePromptTemplate.from_template(""),
     ]
-    prompt_template = CustomChatPromptTemplate.from_messages(template_messages)
+    prompt = CustomChatPromptTemplate.from_messages(template_messages)
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     output_parser = StrOutputParser()
 
@@ -53,7 +53,7 @@ def init_chain():
         RunnablePassthrough.assign(
             chat_history=RunnableLambda(memory.load_memory_variables) | itemgetter("chat_history")
         ) 
-        | prompt_template 
+        | prompt 
         | llm 
         | output_parser
     )
