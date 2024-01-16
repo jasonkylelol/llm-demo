@@ -65,7 +65,7 @@ class CustomChatPromptValue(PromptValue):
 
     def to_string(self) -> str:
         buffer_str = custom_get_buffer_string(self.messages)
-        print(buffer_str)
+        # print(buffer_str)
         return buffer_str
 
     def to_messages(self) -> List[BaseMessage]:

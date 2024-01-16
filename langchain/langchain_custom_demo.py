@@ -8,7 +8,7 @@ from langchain.prompts import (
 )
 from langchain.memory import ConversationBufferMemory
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
-from custom_langchain_hf_tgi_handler import (
+from custom.zephyr_7b_custom_langchain_handler import (
     CustomChatPromptTemplate,
     CustomCallbkHandler,
 )
