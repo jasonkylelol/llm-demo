@@ -83,9 +83,9 @@ Question: {question}"""
         AIMessagePromptTemplate.from_template(""),
     ]
     prompt = CustomChatPromptTemplate.from_messages(template_messages)
-    # prompt = CustomChatPromptTemplate.from_template(template)
 
-    retriever_chain = ({"context": retriever | format_docs, "question": RunnablePassthrough()}
+    retriever_chain = (
+        {"context": retriever | format_docs, "question": RunnablePassthrough()}
         | prompt)
     print("====================================")
     print(retriever_chain.invoke(question).to_string())
