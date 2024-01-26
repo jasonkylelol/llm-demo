@@ -8,7 +8,7 @@ from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.document_loaders import WebBaseLoader
-from custom.zephyr_7b_custom_langchain_handler import (
+from custom.llama2_7b_custom_prompt_template import (
     CustomChatPromptTemplate,
     CustomCallbkHandler,
 )
@@ -22,7 +22,6 @@ from langchain.prompts import (
 from langchain.tools.retriever import create_retriever_tool
 from langchain.agents.load_tools import get_all_tool_names
 from langchain import hub
-from langchain.agents import AgentExecutor, create_react_agent, create_self_ask_with_search_agent
 from langchain.tools.render import render_text_description
 from operator import itemgetter
 
@@ -62,10 +61,10 @@ def init_llm():
         inference_server_url="http://192.168.0.20:8080/",
         # max_new_tokens=256,
         top_k=50,
-        top_p=0.05,
+        top_p=0.65,
         #typical_p=0.95,
-        temperature=0.7,
-        repetition_penalty=1.05,
+        temperature=0.95,
+        repetition_penalty=1.1,
         # streaming=True,
         do_sample=True,
         # callbacks=[callbk_handler]
@@ -79,7 +78,7 @@ def format_docs(docs):
 if __name__ == '__main__':
     retriever = init_retriver()
     llm = init_llm()
-
+    
     question = 'who is Joshua Davis and what happend to him?'
 
     retriever_tool = create_retriever_tool(
@@ -88,30 +87,38 @@ if __name__ == '__main__':
         "embedding-retriever(input: string) -> string"
     )
     tools = [retriever_tool]
-    print(retriever_tool.name)
-    print(retriever_tool.description)
-    # print(retriever_tool.args)
+    # # print(retriever_tool.name)
+    # # print(retriever_tool.description)
+    # # print(retriever_tool.args)
 
     rendered_tools = render_text_description(tools)
     print(rendered_tools)
 
-    template = \
-"""{input}"""
+    template = "{input}"
+    # template = "response with JSON blob with key 'input' and value is '{input}'"
 
-    system_prompt = \
-f"""You are an assistant that has access to the following set of tools. Here are the names and descriptions for each tool:
-{rendered_tools}
-Given the user input, return the name and input of the tool to use. Return your response as a JSON blob with 'name' and 'arguments' keys.
-"""
+#     system_prompt = \
+# f"""You are an assistant that has access to the following set of tools. Here are the names and descriptions for each tool:
+# {rendered_tools}
+# Given the user input, return the name and input of the tool to use. You always response as a JSON blob with 'name' and 'arguments' keys.
+# """
+
+    system_prompt = "You always response as a JSON blob with key 'input' and value which is user original input content"
 
     template_messages = [
         SystemMessagePromptTemplate.from_template(system_prompt),
         HumanMessagePromptTemplate.from_template(template),
-        AIMessagePromptTemplate.from_template(""),
     ]
     prompt = CustomChatPromptTemplate.from_messages(template_messages)
     print(prompt.invoke({"input": question}).to_string())
+    print("====================================================")
 
-    chain = prompt | llm | JsonOutputParser() | itemgetter("arguments") | retriever
-    print(chain.invoke({"input": question}))
+    # chain = prompt | llm | JsonOutputParser() | itemgetter("arguments") | retriever
+    # print(chain.invoke({"input": question}))
+
+    chain = ({"input": RunnablePassthrough()} 
+        | prompt 
+        | llm 
+        | StrOutputParser())
+    print(chain.invoke(question))
 

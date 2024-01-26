@@ -9,9 +9,10 @@ top_k=50
 top_p=0.65
 temperature=0.95
 
-
-model = AutoModelForCausalLM.from_pretrained(model_path, device_map="cuda:2",
-    load_in_4bit=True, torch_dtype=torch.bfloat16)
+model = AutoModelForCausalLM.from_pretrained(model_path,
+    device_map="cuda:1",
+    # load_in_4bit=True,
+    torch_dtype=torch.bfloat16)
 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
 pipe = pipeline(
     task='text-generation',
@@ -55,6 +56,10 @@ if __name__ == '__main__':
             'How brush teeth with shampoo?',
             'Brushing teeth with shampoo is not recommended as it can cause oral health problems'
         ),
+        (
+            'Is mercury an option?',
+            "Not recommend because mercury is toxic and do harm to oral health"
+        ),
     ]
-    msg = 'Is mercury an option?'
+    msg = 'what about butter?'
     predict(msg, history)
