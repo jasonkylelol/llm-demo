@@ -29,11 +29,22 @@ pipe = pipeline(
     pad_token_id=2,
 )
 
+# messages = [
+#     # {"role": "system", "content": "you always response like a thug"},
+#     {"role": "user", "content": "how brush teeth with shampoo?"},
+#     {"role": "assistant", "content": "do not even try it to put shampoo to your teeth, you hear me? shampoo is designed to use for hair, not oral!"},
+#     {"role": "user", "content": "how about mercury?"}
+# ]
+
+question = 'who is Joshua Davis and what happend to him?'
+
+input_template = f'''you always response with pure JSON blob with key: "input" with value '{question}', and put your answer to the value of key: "AI"'''
+
 messages = [
-    # {"role": "system", "content": "you always response like a thug"},
-    {"role": "user", "content": "how brush teeth with shampoo?"},
-    {"role": "assistant", "content": "do not even try it to put shampoo to your teeth, you hear me? shampoo is designed to use for hair, not oral!"},
-    {"role": "user", "content": "how about mercury?"}
+    {
+        "role": "user",
+        "content": input_template,
+    },
 ]
 
 prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)

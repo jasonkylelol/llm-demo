@@ -24,11 +24,41 @@ from langchain.agents.load_tools import get_all_tool_names
 from langchain import hub
 from langchain.tools.render import render_text_description
 from operator import itemgetter
+from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+import torch
 
+device = "cuda:1" # the device to load the model onto
+max_new_tokens=1024
+top_k=50
+top_p=0.65
+temperature=0.95
+
+model_path = "/root/huggingface/models/mistralai/Mistral-7B-Instruct-v0.2"
+
+model = AutoModelForCausalLM.from_pretrained(model_path,
+    device_map=device, torch_dtype=torch.bfloat16)
+tokenizer = AutoTokenizer.from_pretrained(model_path,
+    device_map=device, use_fast=True)
+pipe = pipeline(
+    task='text-generation',
+    model=model,
+    tokenizer=tokenizer,
+    clean_up_tokenization_spaces=True,
+    return_full_text=False,
+    max_new_tokens=max_new_tokens,
+    do_sample=True,
+    temperature=temperature,
+    num_beams=1,
+    top_p=top_p,
+    top_k=top_k,
+    repetition_penalty=1.1,
+    pad_token_id=2,
+)
 
 def init_retriver():
     model_name = "/root/huggingface/models/BAAI/bge-large-en-v1.5"
-    model_kwargs = {"device": "cuda:2"}
+    model_kwargs = {"device": device}
     encode_kwargs = {"normalize_embeddings": True}
     embeddings_model = HuggingFaceBgeEmbeddings(
         model_name=model_name,
@@ -57,68 +87,53 @@ def init_retriver():
     return retriever
 
 def init_llm():
-    llm = HuggingFaceTextGenInference(
-        inference_server_url="http://192.168.0.20:8080/",
-        # max_new_tokens=256,
-        top_k=50,
-        top_p=0.65,
-        #typical_p=0.95,
-        temperature=0.95,
-        repetition_penalty=1.1,
-        # streaming=True,
-        do_sample=True,
-        # callbacks=[callbk_handler]
-    )
+    llm = HuggingFacePipeline(pipeline=pipe)
     return llm
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
-
 if __name__ == '__main__':
     retriever = init_retriver()
     llm = init_llm()
-    
-    question = 'who is Joshua Davis and what happend to him?'
 
-    retriever_tool = create_retriever_tool(
-        retriever,
-        "embedding-retriever",
-        "embedding-retriever(input: string) -> string"
-    )
-    tools = [retriever_tool]
+    # retriever_tool = create_retriever_tool(
+    #     retriever,
+    #     "embedding-retriever",
+    #     "embedding-retriever(input: string) -> string"
+    # )
+    # tools = [retriever_tool]
     # # print(retriever_tool.name)
     # # print(retriever_tool.description)
     # # print(retriever_tool.args)
 
-    rendered_tools = render_text_description(tools)
-    print(rendered_tools)
+    # rendered_tools = render_text_description(tools)
+    # print(rendered_tools)
 
-    template = "{input}"
-    # template = "response with JSON blob with key 'input' and value is '{input}'"
-
-#     system_prompt = \
-# f"""You are an assistant that has access to the following set of tools. Here are the names and descriptions for each tool:
-# {rendered_tools}
-# Given the user input, return the name and input of the tool to use. You always response as a JSON blob with 'name' and 'arguments' keys.
-# """
-
-    system_prompt = "You always response as a JSON blob with key 'input' and value which is user original input content"
-
+    question = 'who is Joshua Davis and what happend to him?'
+    input_template = f'''you always response with pure JSON blob with key: "input" with value '{{input}}', and put your answer as the string type value of key: "AI"'''
     template_messages = [
-        SystemMessagePromptTemplate.from_template(system_prompt),
-        HumanMessagePromptTemplate.from_template(template),
+        HumanMessagePromptTemplate.from_template(input_template),
     ]
     prompt = CustomChatPromptTemplate.from_messages(template_messages)
     print(prompt.invoke({"input": question}).to_string())
+    
     print("====================================================")
-
-    # chain = prompt | llm | JsonOutputParser() | itemgetter("arguments") | retriever
-    # print(chain.invoke({"input": question}))
 
     chain = ({"input": RunnablePassthrough()} 
         | prompt 
         | llm 
         | StrOutputParser())
     print(chain.invoke(question))
+
+    print("====================================================")
+
+    agent_chain = ({"input": RunnablePassthrough()}
+        | prompt
+        | llm
+        | JsonOutputParser()
+        | itemgetter("input")
+        | retriever
+        | format_docs)
+    print(agent_chain.invoke(question))
 
