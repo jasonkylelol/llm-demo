@@ -2,11 +2,8 @@ from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import TextLoader
-import json
-from langchain.llms.huggingface_text_gen_inference import HuggingFaceTextGenInference
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.document_loaders import WebBaseLoader
 from custom.llama2_7b_custom_prompt_template import (
     CustomChatPromptTemplate,
@@ -21,7 +18,6 @@ from langchain.prompts import (
 )
 from langchain.tools.retriever import create_retriever_tool
 from langchain.agents.load_tools import get_all_tool_names
-from langchain import hub
 from langchain.tools.render import render_text_description
 from operator import itemgetter
 from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
@@ -117,7 +113,7 @@ if __name__ == '__main__':
     ]
     prompt = CustomChatPromptTemplate.from_messages(template_messages)
     print(prompt.invoke({"input": question}).to_string())
-    
+
     print("====================================================")
 
     chain = ({"input": RunnablePassthrough()} 

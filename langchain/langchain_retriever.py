@@ -6,7 +6,6 @@ import json
 from langchain.llms.huggingface_text_gen_inference import HuggingFaceTextGenInference
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.document_loaders import WebBaseLoader
 from custom.zephyr_7b_custom_prompt_template import (
     CustomChatPromptTemplate,
@@ -38,7 +37,6 @@ def init_retriver():
     documents = loader.load()
 
     # print(documents[0].page_content[:500])
-
     # text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
     # docs = text_splitter.split_documents(documents)
 
