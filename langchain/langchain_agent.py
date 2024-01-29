@@ -106,8 +106,8 @@ if __name__ == '__main__':
     # rendered_tools = render_text_description(tools)
     # print(rendered_tools)
 
-    question = 'who is Joshua Davis and what happend to him?'
-    input_template = f'''you always response with pure JSON blob with key: "input" with value '{{input}}', and put your answer as the string type value of key: "AI"'''
+    question = 'who is Joshua Davis and what happened to him?'
+    input_template = '''you always response with pure JSON blob with key: "input" with value "{input}", and put your answer as the string type value of key: "AI"'''
     template_messages = [
         HumanMessagePromptTemplate.from_template(input_template),
     ]

@@ -71,7 +71,7 @@ if __name__ == '__main__':
     retriever = init_retriver()
     llm = init_llm()
 
-    question = 'who is Joshua Davis and what happend to him?'
+    question = 'who is Joshua Davis and what happened to him?'
     template = \
 """Answer the question based only on the following context:
 {context}

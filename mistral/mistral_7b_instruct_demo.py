@@ -36,9 +36,9 @@ pipe = pipeline(
 #     {"role": "user", "content": "how about mercury?"}
 # ]
 
-question = 'who is Joshua Davis and what happend to him?'
+question = 'who is Joshua Davis and what happened to him?'
 
-input_template = f'''you always response with pure JSON blob with key: "input" with value '{question}', and put your answer to the value of key: "AI"'''
+input_template = f'''you always response with pure JSON blob with key: "input" with value "{question}", and put your answer to the value of key: "AI"'''
 
 messages = [
     {
