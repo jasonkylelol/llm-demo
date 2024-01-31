@@ -19,7 +19,6 @@ from langchain.prompts import (
     AIMessagePromptTemplate,
 )
 
-
 def init_retriver():
     model_name = "/root/huggingface/models/BAAI/bge-large-en-v1.5"
     model_kwargs = {"device": "cuda:2"}

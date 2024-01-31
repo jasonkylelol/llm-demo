@@ -69,7 +69,6 @@ def init_retriver():
     documents = loader.load()
 
     # print(documents[0].page_content[:500])
-
     # text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
     # docs = text_splitter.split_documents(documents)
 
@@ -107,7 +106,7 @@ if __name__ == '__main__':
     # print(rendered_tools)
 
     question = 'who is Joshua Davis and what happened to him?'
-    input_template = '''you always response with pure JSON blob with key: "input" with value "{input}", and put your answer as the string type value of key: "AI"'''
+    input_template = '''you always response with pure JSON blob with key: "input" with value "{input}", and put your text answer as the string type value of key: "AI"'''
     template_messages = [
         HumanMessagePromptTemplate.from_template(input_template),
     ]

@@ -38,7 +38,7 @@ pipe = pipeline(
 
 question = 'who is Joshua Davis and what happened to him?'
 
-input_template = f'''you always response with pure JSON blob with key: "input" with value "{question}", and put your answer to the value of key: "AI"'''
+input_template = f'''you always response with pure JSON blob with key: "input" with value "{question}", and put your text answer as the string type value of key: "AI"'''
 
 messages = [
     {
