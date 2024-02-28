@@ -45,32 +45,33 @@ async def thirdpart_llm(
     request: Request,
     llm_type: str = Query(..., title="LLM Type", description="Type of Large Language Model"),
 ):
-    try:
-        # Now you can use llm_type in your function
+    # Now you can use llm_type in your function
         # For example, print it for now
-        print(f"Received LLM Type: {llm_type}")
+    print(f"Received LLM Type: {llm_type}")
 
-        # Get the raw content from the request body
-        raw_body = await request.body()
-        # Parse the raw content as JSON
-        request_body = json.loads(raw_body.decode('utf-8'))
-        if not request_body:
-            raise HTTPException(status_code=400, detail="invalid request body")
-
+    # Get the raw content from the request body
+    raw_body = await request.body()
+    # Parse the raw content as JSON
+    request_body = json.loads(raw_body)
+    if not request_body:
+        raise HTTPException(status_code=400, detail="invalid request body")
+    
+    try:
         response_body = call_llm(request_body, llm_type)
 
         # Convert the bytes to an iterable (generator)
         async def generate():
-            chunks = response_body.split(b' ')
+            chunks = response_body.split(' ')
             for chunk in chunks:
                 # print(chunk)
-                yield chunk + b' '
+                yield chunk + ' '
                 # Introduce a delay between chunks (adjust the sleep duration as needed)
                 await asyncio.sleep(0.01)
 
         # Return a StreamingResponse using the generator function
         return StreamingResponse(content=generate(), media_type="text/event-stream")
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
