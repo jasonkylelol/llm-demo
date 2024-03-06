@@ -90,6 +90,7 @@ class ChatGLM3(LLM):
         if len(self.history[-1]["metadata"]) > 0:
             metadata = self.history[-1]["metadata"]
             content = self.history[-1]["content"]
+            print(f"content: {content}")
 
             lines = content.split('\n')
             for line in lines:
@@ -130,6 +131,7 @@ Action:
         else:
             self._extract_observation(prompt)
             query = ""
+        print(f"query: {query}")
         _, self.history = self.model.chat(
             self.tokenizer,
             query,

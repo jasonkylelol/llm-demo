@@ -22,6 +22,7 @@ if __name__ == "__main__":
         ]
     agent = create_structured_chat_agent(llm=llm, tools=tools, prompt=prompt)
     agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
     # ans = agent_executor.invoke(
     #     {
     #         "input": "厦门比北京热吗?",
@@ -37,4 +38,5 @@ if __name__ == "__main__":
             "input": "In State Of The Union, who is Joshua Davis and what happened to him?"
         }
     )
+
     print(ans)

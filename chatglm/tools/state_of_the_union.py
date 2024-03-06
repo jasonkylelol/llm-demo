@@ -10,7 +10,7 @@ from langchain_community.vectorstores.faiss import FAISS
 
 
 class StateInput(BaseModel):
-    content: str = Field(description="the content need to be searched by this tool")
+    content: str = Field(description="the query need to be searched for State Of The union")
 
 
 class State(BaseTool):
