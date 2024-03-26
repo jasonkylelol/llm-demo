@@ -19,6 +19,7 @@ class State(BaseTool):
     args_schema: Type[BaseModel] = StateInput
     vector_db: Optional[FAISS] = None
 
+
     def __init__(self):
         super().__init__()
 
@@ -42,8 +43,10 @@ class State(BaseTool):
         )
         docs = text_splitter.split_documents(documents)
         self.vector_db = FAISS.from_documents(docs, embeddings_model)
+        print(f"Tool [State] loaded, using {model_name}")
 
 
     def _run(self, content: str) -> dict[str, Any]:
         docs = self.vector_db.similarity_search(content, k=1)
+        # print(f"\n[{self.name}] {docs[0].page_content}\n")
         return {"result": docs[0].page_content}

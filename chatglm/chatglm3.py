@@ -90,7 +90,7 @@ class ChatGLM3(LLM):
         if len(self.history[-1]["metadata"]) > 0:
             metadata = self.history[-1]["metadata"]
             content = self.history[-1]["content"]
-            print(f"content: {content}")
+            # print(f"content: {content}")
 
             lines = content.split('\n')
             for line in lines:
@@ -106,9 +106,9 @@ class ChatGLM3(LLM):
                         "action_input": params
                     }
                     self.has_search = True
-                    print("*****Action*****")
-                    print(action_json)
-                    print("*****Answer*****")
+                    # print("*****Action*****")
+                    # print(action_json)
+                    # print("*****Answer*****")
                     return f"""
 Action: 
 ```
@@ -131,7 +131,8 @@ Action:
         else:
             self._extract_observation(prompt)
             query = ""
-        print(f"query: {query}")
+        # print(f"\n1: history: {json.dumps(self.history, ensure_ascii=False)}\n")
+        # print(f"query: {query}\n")
         _, self.history = self.model.chat(
             self.tokenizer,
             query,
@@ -140,6 +141,8 @@ Action:
             max_length=self.max_token,
             temperature=self.temperature,
         )
+        # print(f"\n2: history: {json.dumps(self.history, ensure_ascii=False)}\n")
         response = self._extract_tool()
+        # print(f"\n2: response: {json.dumps(response, ensure_ascii=False)}\n")
         history.append((prompt, response))
         return response
