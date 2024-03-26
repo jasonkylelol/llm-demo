@@ -18,10 +18,23 @@ from langchain.prompts import (
     ChatMessagePromptTemplate,
     AIMessagePromptTemplate,
 )
+from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+import torch, time
+
+embedding_device = "cuda:1"
+device = "cuda:2"
+
+model_path = "/root/huggingface/models/HuggingFaceH4/zephyr-7b-beta/"
+embedding_model_path = "/root/huggingface/models/BAAI/bge-large-en-v1.5"
+max_new_tokens=1024
+top_k=50
+top_p=0.65
+temperature=0.95
 
 def init_retriver():
-    model_name = "/root/huggingface/models/BAAI/bge-large-en-v1.5"
-    model_kwargs = {"device": "cuda:2"}
+    model_name = embedding_model_path
+    model_kwargs = {"device": embedding_device}
     encode_kwargs = {"normalize_embeddings": True}
     embeddings_model = HuggingFaceBgeEmbeddings(
         model_name=model_name,
@@ -49,6 +62,7 @@ def init_retriver():
     return retriever
 
 def init_llm():
+    '''
     llm = HuggingFaceTextGenInference(
         inference_server_url="http://192.168.0.20:8080/",
         # max_new_tokens=256,
@@ -61,6 +75,27 @@ def init_llm():
         do_sample=True,
         # callbacks=[callbk_handler]
     )
+    '''
+    model = AutoModelForCausalLM.from_pretrained(model_path,
+        device_map=device, torch_dtype=torch.bfloat16)
+    tokenizer = AutoTokenizer.from_pretrained(model_path,
+        device_map=device, use_fast=True)
+    pipe = pipeline(
+        task='text-generation',
+        model=model,
+        tokenizer=tokenizer,
+        clean_up_tokenization_spaces=True,
+        return_full_text=False,
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        temperature=temperature,
+        num_beams=1,
+        top_p=top_p,
+        top_k=top_k,
+        repetition_penalty=1.1,
+        pad_token_id=2,
+    )
+    llm = HuggingFacePipeline(pipeline=pipe)
     return llm
 
 def format_docs(docs):
@@ -90,3 +125,5 @@ Question: {question}"""
     chain = (retriever_chain | llm | StrOutputParser())
     print("====================================")
     print(chain.invoke(question))
+
+    # time.sleep(3600)
