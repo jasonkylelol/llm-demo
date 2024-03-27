@@ -74,7 +74,7 @@ def init_llm():
     model = AutoModelForCausalLM.from_pretrained(model_path,
         device_map=device, torch_dtype=torch.bfloat16)
     tokenizer = AutoTokenizer.from_pretrained(model_path,
-        device_map=device, padding_side="left")
+        device_map=device, use_fast=True)
     pipe = pipeline(
         task='text-generation',
         model=model,
@@ -110,11 +110,8 @@ def prompt_router(input):
 
     template_messages = [
         HumanMessagePromptTemplate.from_template(most_similar),
-        AIMessagePromptTemplate.from_template(""),
     ]
     prompt = CustomChatPromptTemplate.from_messages(template_messages)
-
-    # return PromptTemplate.from_template(most_similar)
     print(prompt.invoke(input).to_string())
     return prompt
 

@@ -17,34 +17,23 @@ pipe = pipeline(
     task='text-generation',
     model=model,
     tokenizer=tokenizer,
-    clean_up_tokenization_spaces=True,
+    # clean_up_tokenization_spaces=True,
     return_full_text=False,
     max_new_tokens=max_new_tokens,
     do_sample=True,
     temperature=temperature,
-    num_beams=1,
+    # num_beams=1,
     top_p=top_p,
     top_k=top_k,
-    repetition_penalty=1.1,
-    pad_token_id=2,
+    # repetition_penalty=1.1,
+    pad_token_id=tokenizer.eos_token_id,
 )
 
-# messages = [
-#     # {"role": "system", "content": "you always response like a thug"},
-#     {"role": "user", "content": "how brush teeth with shampoo?"},
-#     {"role": "assistant", "content": "do not even try it to put shampoo to your teeth, you hear me? shampoo is designed to use for hair, not oral!"},
-#     {"role": "user", "content": "how about mercury?"}
-# ]
-
-question = 'who is Joshua Davis and what happened to him?'
-
-input_template = f'''you always response with pure JSON blob with key: "input" with value "{question}", and put your text answer as the string type value of key: "AI"'''
-
 messages = [
-    {
-        "role": "user",
-        "content": input_template,
-    },
+    # {"role": "system", "content": "you always response like a thug"},
+    {"role": "user", "content": "how brush teeth with shampoo?"},
+    {"role": "assistant", "content": "do not even try it to put shampoo to your teeth, you hear me? shampoo is designed to use for hair, not oral!"},
+    {"role": "user", "content": "how about mercury?"}
 ]
 
 prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
