@@ -1,7 +1,7 @@
 from langchain_community.chat_message_histories import RedisChatMessageHistory, ChatMessageHistory
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from custom.llama2_7b_custom_prompt_template import (
+from custom.llama2_custom_prompt_template import (
     CustomChatPromptTemplate,
     CustomCallbkHandler,
 )
@@ -29,7 +29,7 @@ temperature=0.95
 model_path = "/root/huggingface/models/mistralai/Mistral-7B-Instruct-v0.2"
 
 model = AutoModelForCausalLM.from_pretrained(model_path,
-    device_map=device, torch_dtype=torch.bfloat16, load_in_4bit=True)
+    device_map=device, torch_dtype=torch.bfloat16)
 tokenizer = AutoTokenizer.from_pretrained(model_path,
     device_map=device, use_fast=True)
 pipe = pipeline(

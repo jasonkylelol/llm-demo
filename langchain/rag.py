@@ -7,7 +7,7 @@ from langchain.llms.huggingface_text_gen_inference import HuggingFaceTextGenInfe
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_community.document_loaders import WebBaseLoader
-from custom.zephyr_7b_custom_prompt_template import (
+from custom.zephyr_custom_prompt_template import (
     CustomChatPromptTemplate,
     CustomCallbkHandler,
 )
@@ -62,20 +62,6 @@ def init_retriver():
     return retriever
 
 def init_llm():
-    '''
-    llm = HuggingFaceTextGenInference(
-        inference_server_url="http://192.168.0.20:8080/",
-        # max_new_tokens=256,
-        top_k=50,
-        top_p=0.05,
-        #typical_p=0.95,
-        temperature=0.7,
-        repetition_penalty=1.05,
-        # streaming=True,
-        do_sample=True,
-        # callbacks=[callbk_handler]
-    )
-    '''
     model = AutoModelForCausalLM.from_pretrained(model_path,
         device_map=device, torch_dtype=torch.bfloat16)
     tokenizer = AutoTokenizer.from_pretrained(model_path,

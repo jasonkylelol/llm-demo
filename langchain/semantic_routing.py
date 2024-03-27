@@ -2,7 +2,7 @@ from langchain.utils.math import cosine_similarity
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from custom.zephyr_7b_custom_prompt_template import (
+from custom.llama2_custom_prompt_template import (
     CustomChatPromptTemplate,
     CustomCallbkHandler,
 )
@@ -21,20 +21,24 @@ from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 
 physics_template = """You are a very smart physics professor. \
 You are great at answering questions about physics in a concise and easy to understand manner. \
-When you don't know the answer to a question you admit that you don't know.
-
+Always answer questions starting with "As Stephen Hawking told me". \
 Here is a question:
 {query}"""
 
 math_template = """You are a very good mathematician. You are great at answering math questions. \
 You are so good because you are able to break down hard problems into their component parts, \
-answer the component parts, and then put them together to answer the broader question.
+answer the component parts, and then put them together to answer the broader question. \
+Always answer questions starting with "As Leibniz told me". \
+Here is a question:
+{query}"""
 
+common_template = """You are a helpful AI assistant. \
+Always answer questions starting with "As far as I know". \
 Here is a question:
 {query}"""
 
 
-model_path = "/root/huggingface/models/HuggingFaceH4/zephyr-7b-beta/"
+model_path = "/root/huggingface/models/mistralai/Mistral-7B-Instruct-v0.2"
 embedding_model_path = "/root/huggingface/models/BAAI/bge-large-en-v1.5"
 
 device = "cuda:2"
@@ -46,7 +50,7 @@ top_p=0.65
 temperature=0.95
 
 embeddings_model, prompt_embeddings = None, None
-prompt_templates = [physics_template, math_template]
+prompt_templates = [physics_template, math_template, common_template]
 
 
 def init_embeddings():
@@ -70,21 +74,21 @@ def init_llm():
     model = AutoModelForCausalLM.from_pretrained(model_path,
         device_map=device, torch_dtype=torch.bfloat16)
     tokenizer = AutoTokenizer.from_pretrained(model_path,
-        device_map=device, use_fast=True)
+        device_map=device, padding_side="left")
     pipe = pipeline(
         task='text-generation',
         model=model,
         tokenizer=tokenizer,
-        clean_up_tokenization_spaces=True,
+        # clean_up_tokenization_spaces=True,
         return_full_text=False,
         max_new_tokens=max_new_tokens,
         do_sample=True,
         temperature=temperature,
-        num_beams=1,
+        # num_beams=1,
         top_p=top_p,
         top_k=top_k,
-        repetition_penalty=1.1,
-        pad_token_id=2,
+        # repetition_penalty=1.1,
+        pad_token_id=tokenizer.eos_token_id,
     )
     llm = HuggingFacePipeline(pipeline=pipe)
     return llm
@@ -95,7 +99,14 @@ def prompt_router(input):
     query_embedding = embeddings_model.embed_query(input["query"])
     similarity = cosine_similarity([query_embedding], prompt_embeddings)[0]
     most_similar = prompt_templates[similarity.argmax()]
-    print("Using MATH" if most_similar == math_template else "Using PHYSICS")
+
+    print(similarity.argmax())
+    if most_similar == math_template:
+        print("Using Math")
+    elif most_similar == physics_template:
+        print("Using Physics")
+    else:
+        print("using Common")
 
     template_messages = [
         HumanMessagePromptTemplate.from_template(most_similar),
@@ -127,4 +138,4 @@ if __name__ == '__main__':
 
     chain.invoke("What's Trigonometric functions?")
 
-    chain.invoke("How humans survived on Mars?")
+    chain.invoke("Can I brush teeth with shampoo?")

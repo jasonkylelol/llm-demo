@@ -1,4 +1,3 @@
-from langchain.llms.huggingface_text_gen_inference import HuggingFaceTextGenInference
 from langchain.prompts import (
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
@@ -8,16 +7,50 @@ from langchain.prompts import (
 )
 from langchain.memory import ConversationBufferMemory
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
-from custom.zephyr_7b_custom_prompt_template import (
+from custom.zephyr_custom_prompt_template import (
     CustomChatPromptTemplate,
     CustomCallbkHandler,
 )
 from langchain.schema import StrOutputParser
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 import sys, asyncio
 from operator import itemgetter
+from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+import torch
 
 global chain, queue, memory
+
+
+model_path = "/root/huggingface/models/HuggingFaceH4/zephyr-7b-beta/"
+device = "cuda:2"
+max_new_tokens=1024
+top_k=50
+top_p=0.65
+temperature=0.95
+
+def init_llm(callbk_handler):
+    model = AutoModelForCausalLM.from_pretrained(model_path,
+        device_map=device, torch_dtype=torch.bfloat16)
+    tokenizer = AutoTokenizer.from_pretrained(model_path,
+        device_map=device, use_fast=True)
+    pipe = pipeline(
+        task='text-generation',
+        model=model,
+        tokenizer=tokenizer,
+        clean_up_tokenization_spaces=True,
+        return_full_text=False,
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        temperature=temperature,
+        num_beams=1,
+        top_p=top_p,
+        top_k=top_k,
+        repetition_penalty=1.1,
+        pad_token_id=2,
+        callbacks=[callbk_handler],
+    )
+    llm = HuggingFacePipeline(pipeline=pipe)
+    return llm
 
 def init_chain():
     global chain, queue, memory
@@ -25,18 +58,7 @@ def init_chain():
     queue = asyncio.Queue()
     callbk_handler = CustomCallbkHandler(queue)
 
-    llm = HuggingFaceTextGenInference(
-        inference_server_url="http://192.168.2.75:8080/",
-        max_new_tokens=256,
-        top_k=50,
-        top_p=0.05,
-        #typical_p=0.95,
-        temperature=0.7,
-        repetition_penalty=1.05,
-        streaming=True,
-        do_sample=True,
-        callbacks=[callbk_handler]
-    )
+    llm = init_llm(callbk_handler)
 
     template_messages = [
         SystemMessagePromptTemplate.from_template("You are a helpful assistant"),
