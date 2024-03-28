@@ -35,8 +35,9 @@ def handle_rec_text_splitter(
     )
     docs = rec_text_splitter.split_documents(documents)
     vector_db = FAISS.from_documents(docs, embeddings_models[model_name])
-    embedding_vectors = embeddings_models[model_name].embed_query(query)
-    resp_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=1)
+    resp_docs = vector_db.similarity_search(query)
+    # embedding_vectors = embeddings_models[model_name].embed_query(query)
+    # resp_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=1)
     return resp_docs[0].page_content
 
 
