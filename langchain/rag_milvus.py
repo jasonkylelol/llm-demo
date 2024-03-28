@@ -31,7 +31,7 @@ temperature=0.95
 
 milvus_connection = {"host": "192.168.0.20", "port": "30041"}
 
-def init_retriver():
+def init_retriever():
     model_kwargs = {"device": device}
     encode_kwargs = {"normalize_embeddings": True}
     embeddings_model = HuggingFaceBgeEmbeddings(
@@ -99,7 +99,7 @@ def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
 if __name__ == '__main__':
-    retriever = init_retriver()
+    retriever = init_retriever()
     llm = init_llm()
 
     question = 'who is Joshua Davis and what happened to him?'
