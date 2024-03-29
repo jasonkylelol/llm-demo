@@ -1,11 +1,11 @@
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_community.vectorstores.milvus import Milvus
 from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import TextLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from langchain_community.document_loaders import WebBaseLoader
+from langchain_community.document_loaders.web_base import WebBaseLoader
 from custom.zephyr_custom_prompt_template import (
     CustomChatPromptTemplate,
     CustomCallbkHandler,

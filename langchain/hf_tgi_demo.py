@@ -1,6 +1,6 @@
 from langchain.llms.huggingface_text_gen_inference import HuggingFaceTextGenInference
 from langchain_experimental.chat_models import Llama2Chat
-from langchain.chains import LLMChain
+from langchain.chains.llm import LLMChain
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts.chat import (
     ChatPromptTemplate,

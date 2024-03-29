@@ -16,7 +16,7 @@ from langchain.prompts import (
 from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings
 
 
 physics_template = """You are a very smart physics professor. \
