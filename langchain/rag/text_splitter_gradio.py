@@ -25,10 +25,8 @@ separators=[
 def handle_rec_text_splitter(
     file, model_name, query, chunk_size, chunk_overlap) -> str:
     # print("[handle_rec_text_splitter]", file, model_name, query, chunk_size, chunk_overlap)
-
     loader = TextLoader(file)
     documents = loader.load()
-
     rec_text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -38,7 +36,7 @@ def handle_rec_text_splitter(
         separators=separators,
     )
     docs = rec_text_splitter.split_documents(documents)
-    print("[rec_text_splitter] [chunks]", len(docs))
+    print(f"[rec_text_splitter] [{model_name}] [chunks] {len(docs)}")
     vector_db = FAISS.from_documents(docs, embeddings_models[model_name])
     resp_docs = vector_db.similarity_search(query)
     # embedding_vectors = embeddings_models[model_name].embed_query(query)
@@ -53,7 +51,7 @@ def handle_semantic_chunker(file, model_name, query, breakpoint_threshold_type) 
     with open(file) as f:
         content = f.read()
     docs = text_splitter.create_documents([content])
-    print("[semantic_chunker] [chunks]", len(docs))
+    print(f"[semantic_chunker] [{model_name}] [chunks] {len(docs)}")
     embedding_vectors = embeddings_models[model_name].embed_query(query)
     vector_db = FAISS.from_documents(docs, embeddings_models[model_name])
     resp_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=1)
@@ -158,6 +156,7 @@ def init_blocks():
     return app
 
 
+# nohup python langchain/rag/text_splitter_gradio.py > logs.txt 2>&1 &
 if __name__ == '__main__':
     init_embeddings_models()
     app = init_blocks()
