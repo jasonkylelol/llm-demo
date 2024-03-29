@@ -23,17 +23,22 @@ separators=[
 
 
 def handle_rec_text_splitter(
-    file, model_name, query, chunk_size, chunk_overlap, add_start_index) -> str:
-    # print("[handle_rec_text_splitter]", file, model_name, query, chunk_size, chunk_overlap, add_start_index)
+    file, model_name, query, chunk_size, chunk_overlap) -> str:
+    # print("[handle_rec_text_splitter]", file, model_name, query, chunk_size, chunk_overlap)
 
     loader = TextLoader(file)
     documents = loader.load()
 
     rec_text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size, chunk_overlap=chunk_overlap, add_start_index=add_start_index,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        # add_start_index=add_start_index,
+        length_function=len,
+        is_separator_regex=False,
         separators=separators,
     )
     docs = rec_text_splitter.split_documents(documents)
+    print("[rec_text_splitter] [chunks]", len(docs))
     vector_db = FAISS.from_documents(docs, embeddings_models[model_name])
     resp_docs = vector_db.similarity_search(query)
     # embedding_vectors = embeddings_models[model_name].embed_query(query)
@@ -48,6 +53,7 @@ def handle_semantic_chunker(file, model_name, query, breakpoint_threshold_type) 
     with open(file) as f:
         content = f.read()
     docs = text_splitter.create_documents([content])
+    print("[semantic_chunker] [chunks]", len(docs))
     embedding_vectors = embeddings_models[model_name].embed_query(query)
     vector_db = FAISS.from_documents(docs, embeddings_models[model_name])
     resp_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=1)
@@ -71,16 +77,22 @@ def init_embeddings_models():
         model_kwargs=model_kwargs,
     )
 
+    embeddings_models["BAAI/bge-large-en-v1.5"] = HuggingFaceBgeEmbeddings(
+        model_name="/root/huggingface/models/BAAI/bge-large-en-v1.5",
+        model_kwargs=model_kwargs,
+        encode_kwargs={"normalize_embeddings": True}
+    )
+
+    print("[init_embeddings_models]", embeddings_models.keys())
+
 
 def on_submit(
     upload_file, splitter_radio, query: str,
     chunk_size, chunk_overlap: int,
-    add_start_index: bool,
     embeddings_model, breakpoint_threshold_type: str
     ) -> str:
     print("[parameters]", upload_file, splitter_radio, query,
         chunk_size, chunk_overlap,
-        add_start_index,
         embeddings_model, breakpoint_threshold_type, flush=True)
 
     if not upload_file:
@@ -93,7 +105,7 @@ def on_submit(
         return f"需要选择 embeddings_model"
 
     if splitter_radio == "RecursiveCharacterTextSplitter":
-        return handle_rec_text_splitter(upload_file, embeddings_model, query, chunk_size, chunk_overlap, add_start_index)
+        return handle_rec_text_splitter(upload_file, embeddings_model, query, chunk_size, chunk_overlap)
     else:
         return handle_semantic_chunker(upload_file, embeddings_model, query, breakpoint_threshold_type)
 
@@ -107,7 +119,7 @@ def on_splitter_radio_changed(choice):
 
 def init_blocks():
     with gr.Blocks() as app:
-        gr.Markdown("# 中文文本分割效果预览")
+        gr.Markdown("# 中/英 文本分割效果预览")
         with gr.Row():
             with gr.Column():
                 upload_file = gr.File(file_types=[".text"], label="需要拆分的文件")
@@ -117,14 +129,14 @@ def init_blocks():
                     value="RecursiveCharacterTextSplitter",
                     info="RecursiveCharacterTextSplitter: 递归文本分割 SemanticChunker: 根据语义相似性分割文本")
                 embeddings_model = gr.Dropdown(label="embeddings_model",
-                        choices=["BAAI/bge-large-zh-v1.5", "infgrad/stella-large-zh-v3-1792d"],
-                        value="BAAI/bge-large-zh-v1.5")
+                        choices=["BAAI/bge-large-zh-v1.5", "infgrad/stella-large-zh-v3-1792d", "BAAI/bge-large-en-v1.5"],
+                        value="BAAI/bge-large-zh-v1.5",
+                        info="中文: bge-large-zh-v1.5, stella-large-zh-v3-1792d  英文: bge-large-en-v1.5")
                 with gr.Group() as recursive_character_params:
                     # recursive_character_params.visible = True
                     # chunk_size=1000, chunk_overlap=400, add_start_index=False
                     chunk_size = gr.Number(value=1000, label="chunk_size")
                     chunk_overlap = gr.Number(value=400, label="chunk_overlap")
-                    add_start_index = gr.Checkbox(value=False, label="add_start_index")
                 with gr.Group() as semantic_params:
                     semantic_params.visible = False
                     # breakpoint_threshold_type ["percentile","standard_deviation","interquartile"]
@@ -141,7 +153,7 @@ def init_blocks():
             with gr.Column():
                 result = gr.TextArea(label="检索结果")
         inputs = [upload_file, splitter_radio, query, chunk_size, chunk_overlap,
-            add_start_index, embeddings_model, breakpoint_threshold_type]
+            embeddings_model, breakpoint_threshold_type]
         submit_btn.click(fn=on_submit, inputs=inputs, outputs=[result])
     return app
 
