@@ -3,7 +3,7 @@ import os
 # 可以指定一个绝对路径，统一存放所有的Embedding和LLM模型。
 # 每个模型可以是一个单独的目录，也可以是某个目录下的二级子目录。
 # 如果模型目录名称和 MODEL_PATH 中的 key 或 value 相同，程序会自动检测加载，无需修改 MODEL_PATH 中的路径。
-MODEL_ROOT_PATH = ""
+MODEL_ROOT_PATH = "/data/models"
 
 # 选用的 Embedding 名称
 EMBEDDING_MODEL = "bge-large-zh-v1.5"
@@ -26,11 +26,11 @@ EMBEDDING_MODEL_OUTPUT_PATH = "output"
 # 在这里，我们使用目前主流的两个离线模型，其中，chatglm3-6b 为默认加载模型。
 # 如果你的显存不足，可使用 Qwen-1_8B-Chat, 该模型 FP16 仅需 3.8G显存。
 
-LLM_MODELS = ["chatglm3-6b", "zhipu-api", "openai-api"]
+LLM_MODELS = ["chatglm3-6b"]
 Agent_MODEL = None
 
 # LLM 模型运行设备。设为"auto"会自动检测(会有警告)，也可手动设定为 "cuda","mps","cpu","xpu" 其中之一。
-LLM_DEVICE = "auto"
+LLM_DEVICE = "cuda"
 
 HISTORY_LEN = 3
 
