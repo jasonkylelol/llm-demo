@@ -10,4 +10,3 @@ huggingface llm demos
 - finetuning `for llama-factory`
 - api-adapter `for baidu qianfan chat endpoint`
 - chatglm `for THUDM/chatglm`
-- chatchat-space `cahtchat-space/langchain-chatchat`
