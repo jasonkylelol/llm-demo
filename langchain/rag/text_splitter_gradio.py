@@ -4,9 +4,6 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders.text import TextLoader
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_experimental.text_splitter import SemanticChunker
-
-# from . import langchain as custom_langchain
-# from custom_langchain.text_splitter import ChineseRecursiveTextSplitter
 from custom.text_splitter import ChineseRecursiveTextSplitter
 
 embeddings_models = {}
