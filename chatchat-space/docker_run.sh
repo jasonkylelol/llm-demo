@@ -14,3 +14,6 @@ else
         -v /data/lm/huggingface/models:/data/models \
         $IMAGE
 fi
+
+# pip3 list | grep nvidia | awk '{print $1}' | xargs pip uninstall -y
+# pip3 install --force-reinstall -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt

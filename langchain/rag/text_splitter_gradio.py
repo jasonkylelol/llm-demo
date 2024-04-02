@@ -4,6 +4,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders.text import TextLoader
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_experimental.text_splitter import SemanticChunker
+from langchain.text_splitter import ChineseRecursiveTextSplitter
 
 
 embeddings_models = {}
@@ -44,6 +45,23 @@ def handle_rec_text_splitter(
     return resp_docs[0].page_content
 
 
+def handle_chinese_rec_text_splitter(
+    file, model_name, query, chunk_size, chunk_overlap) -> str:
+    loader = TextLoader(file)
+    documents = loader.load()
+    rec_text_splitter = ChineseRecursiveTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+    )
+    docs = rec_text_splitter.split_documents(documents)
+    print(f"[chinese_rec_text_splitter] [{model_name}] [chunks] {len(docs)}")
+    vector_db = FAISS.from_documents(docs, embeddings_models[model_name])
+    resp_docs = vector_db.similarity_search(query)
+    # embedding_vectors = embeddings_models[model_name].embed_query(query)
+    # resp_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=1)
+    return resp_docs[0].page_content
+
+
 def handle_semantic_chunker(file, model_name, query, breakpoint_threshold_type) -> str:
     text_splitter = SemanticChunker(embeddings_models[model_name],
         breakpoint_threshold_type=breakpoint_threshold_type,
@@ -69,12 +87,10 @@ def init_embeddings_models():
         model_kwargs=model_kwargs,
         encode_kwargs={"normalize_embeddings": True}
     )
-
     embeddings_models["infgrad/stella-large-zh-v3-1792d"] = HuggingFaceEmbeddings(
         model_name="/root/huggingface/models/infgrad/stella-large-zh-v3-1792d",
         model_kwargs=model_kwargs,
     )
-
     embeddings_models["BAAI/bge-large-en-v1.5"] = HuggingFaceBgeEmbeddings(
         model_name="/root/huggingface/models/BAAI/bge-large-en-v1.5",
         model_kwargs=model_kwargs,
@@ -95,7 +111,8 @@ def on_submit(
 
     if not upload_file:
         return f"需要上传文件"
-    if splitter_radio != "RecursiveCharacterTextSplitter" and splitter_radio != "SemanticChunker":
+    if splitter_radio != "RecursiveCharacterTextSplitter" and splitter_radio != "SemanticChunker" \
+        and splitter_radio != "ChineseRecursiveTextSplitter":
         return f"无效文本分割器"
     if query == "":
         return f"检索内容不能为空"
@@ -104,12 +121,14 @@ def on_submit(
 
     if splitter_radio == "RecursiveCharacterTextSplitter":
         return handle_rec_text_splitter(upload_file, embeddings_model, query, chunk_size, chunk_overlap)
+    elif splitter_radio != "ChineseRecursiveTextSplitter":
+        return handle_chinese_rec_text_splitter(upload_file, embeddings_model, query, chunk_size, chunk_overlap)
     else:
         return handle_semantic_chunker(upload_file, embeddings_model, query, breakpoint_threshold_type)
 
 
 def on_splitter_radio_changed(choice):
-    if choice == "RecursiveCharacterTextSplitter":
+    if choice == "RecursiveCharacterTextSplitter" or choice == "ChineseRecursiveTextSplitter":
         return gr.Group(visible=True), gr.Group(visible=False)
     else:
         return gr.Group(visible=False), gr.Group(visible=True)
@@ -123,9 +142,8 @@ def init_blocks():
                 upload_file = gr.File(file_types=[".text"], label="需要拆分的文件")
 
                 splitter_radio = gr.Radio(label="文本分割器",
-                    choices=["RecursiveCharacterTextSplitter", "SemanticChunker"],
-                    value="RecursiveCharacterTextSplitter",
-                    info="RecursiveCharacterTextSplitter: 递归文本分割 SemanticChunker: 根据语义相似性分割文本")
+                    choices=["RecursiveCharacterTextSplitter", "SemanticChunker", "ChineseRecursiveTextSplitter"],
+                    value="RecursiveCharacterTextSplitter")
                 embeddings_model = gr.Dropdown(label="embeddings_model",
                         choices=["BAAI/bge-large-zh-v1.5", "infgrad/stella-large-zh-v3-1792d", "BAAI/bge-large-en-v1.5"],
                         value="BAAI/bge-large-zh-v1.5",

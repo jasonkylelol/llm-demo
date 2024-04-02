@@ -7,6 +7,7 @@ run apt reinstall -y bash bash-completion
 run rm -rf /chatglm2-6b
 run rm -rf /text2vec-bge-large-chinese
 run rm -f /zh_core_web_lg-3.6.0-py3-none-any.whl
+run rm -f /''=*
 
 add configs/model_config.py /langchain-chatchat/configs/model_config.py
 add configs/server_config.py /langchain-chatchat/configs/server_config.py
