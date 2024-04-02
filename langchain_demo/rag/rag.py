@@ -1,3 +1,6 @@
+import os,sys
+sys.path.append(os.getcwd())
+
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
@@ -8,7 +11,7 @@ import json
 from langchain.llms.huggingface_text_gen_inference import HuggingFaceTextGenInference
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from custom.prompt_template.llama2_prompt_template import (
+from langchain_demo.custom.prompt_template.llama2_prompt_template import (
     CustomChatPromptTemplate,
     CustomCallbkHandler,
 )
@@ -23,8 +26,8 @@ from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch, time
 
-device = "cuda:2"
-embedding_device = "cuda:1"
+device = "cuda:0"
+embedding_device = "cuda:0"
 
 model_path = "/root/huggingface/models/mistralai/Mistral-7B-Instruct-v0.2"
 embedding_model_path = "/root/huggingface/models/BAAI/bge-large-en-v1.5"
@@ -44,7 +47,7 @@ def init_retriever():
         encode_kwargs=encode_kwargs
     )
 
-    loader = TextLoader("langchain/rag/opanai_lawsuit.txt")
+    loader = TextLoader("langchain_demo/rag/files/opanai_lawsuit.txt")
     # loader = WebBaseLoader(
     #     web_paths=("https://raw.githubusercontent.com/hwchase17/chat-your-data/master/state_of_the_union.txt",),
     # )
@@ -79,7 +82,7 @@ def init_semantic_retriever():
         breakpoint_threshold_type="interquartile",
     )
 
-    with open("langchain/rag/opanai_lawsuit.txt") as f:
+    with open("langchain_demo/rag/files/opanai_lawsuit.txt") as f:
         content = f.read()
 
     docs = text_splitter.create_documents([content])

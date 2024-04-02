@@ -1,10 +1,13 @@
+import os,sys
+sys.path.append(os.getcwd())
+
 import gradio as gr
 from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings, HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders.text import TextLoader
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_experimental.text_splitter import SemanticChunker
-from custom.text_splitter import ChineseRecursiveTextSplitter
+from langchain_demo.custom.text_splitter import ChineseRecursiveTextSplitter
 
 embeddings_models = {}
 separators=[
