@@ -6,3 +6,8 @@ huggingface llm demos
 - llama2 `for meta-llama/Llama-2-7b-chat-hf`
 - tts `text-to-speech`
 - mistral `for mistralai/Mistral-7B-Instruct-v0.2`
+- moonshot `moonshot api with file extraction`
+- finetuning `for llama-factory`
+- api-adapter `for baidu qianfan chat endpoint`
+- chatglm `for THUDM/chatglm`
+- chatchat-space `cahtchat-space/langchain-chatchat`
