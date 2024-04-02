@@ -4,8 +4,10 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders.text import TextLoader
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_experimental.text_splitter import SemanticChunker
-from langchain.text_splitter import ChineseRecursiveTextSplitter
 
+# from . import langchain as custom_langchain
+# from custom_langchain.text_splitter import ChineseRecursiveTextSplitter
+from custom.text_splitter import ChineseRecursiveTextSplitter
 
 embeddings_models = {}
 separators=[
@@ -26,7 +28,7 @@ separators=[
 def handle_rec_text_splitter(
     file, model_name, query, chunk_size, chunk_overlap) -> str:
     # print("[handle_rec_text_splitter]", file, model_name, query, chunk_size, chunk_overlap)
-    loader = TextLoader(file)
+    loader = TextLoader(file.name)
     documents = loader.load()
     rec_text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
@@ -47,7 +49,7 @@ def handle_rec_text_splitter(
 
 def handle_chinese_rec_text_splitter(
     file, model_name, query, chunk_size, chunk_overlap) -> str:
-    loader = TextLoader(file)
+    loader = TextLoader(file.name)
     documents = loader.load()
     rec_text_splitter = ChineseRecursiveTextSplitter(
         chunk_size=chunk_size,
@@ -66,7 +68,7 @@ def handle_semantic_chunker(file, model_name, query, breakpoint_threshold_type) 
     text_splitter = SemanticChunker(embeddings_models[model_name],
         breakpoint_threshold_type=breakpoint_threshold_type,
     )
-    with open(file) as f:
+    with open(file.name) as f:
         content = f.read()
     docs = text_splitter.create_documents([content])
     print(f"[semantic_chunker] [{model_name}] [chunks] {len(docs)}")
@@ -121,7 +123,7 @@ def on_submit(
 
     if splitter_radio == "RecursiveCharacterTextSplitter":
         return handle_rec_text_splitter(upload_file, embeddings_model, query, chunk_size, chunk_overlap)
-    elif splitter_radio != "ChineseRecursiveTextSplitter":
+    elif splitter_radio == "ChineseRecursiveTextSplitter":
         return handle_chinese_rec_text_splitter(upload_file, embeddings_model, query, chunk_size, chunk_overlap)
     else:
         return handle_semantic_chunker(upload_file, embeddings_model, query, breakpoint_threshold_type)

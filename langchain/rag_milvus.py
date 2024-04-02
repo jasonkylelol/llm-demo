@@ -6,7 +6,7 @@ from langchain_community.document_loaders import TextLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_community.document_loaders.web_base import WebBaseLoader
-from custom.zephyr_custom_prompt_template import (
+from custom.prompt_template.zephyr_prompt_template import (
     CustomChatPromptTemplate,
     CustomCallbkHandler,
 )

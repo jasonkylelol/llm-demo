@@ -1,7 +1,7 @@
 from langchain_community.chat_message_histories.redis import RedisChatMessageHistory
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from custom.llama2_custom_prompt_template import (
+from custom.prompt_template.llama2_prompt_template import (
     CustomChatPromptTemplate,
     CustomCallbkHandler,
 )
