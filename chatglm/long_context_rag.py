@@ -2,6 +2,7 @@ import os, sys, json, re
 sys.path.append(os.getcwd())
 sys.path.append(os.path.join(os.getcwd(), "langchain_demo/custom"))
 
+from typing import List, Optional
 from chatglm3 import ChatGLM3, ResponseParser
 from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
@@ -9,8 +10,7 @@ from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTex
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, WebBaseLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.documents import Document
-from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from langchain.llms.base import LLM
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough, RunnableSerializable
 from langchain.prompts import (
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
@@ -34,8 +34,10 @@ top_k=50
 top_p=0.65
 temperature=0.2
 
+chain, retriever_chain = None, None
 
-def init_retriever():
+
+def init_retriever(tokenizer):
     model_name = embedding_model_path
     model_kwargs = {"device": embedding_device}
     encode_kwargs = {"normalize_embeddings": True}
@@ -54,13 +56,24 @@ def init_retriever():
         if idx == 0:
             doc_meta = doc.metadata
         cleaned_page_content = re.sub(r'\n+', '\n', doc.page_content)
+        # emoji_pattern = re.compile("[\U00010000-\U0010ffff]")
+        # cleaned_page_content = emoji_pattern.sub('', cleaned_page_content)
         doc_page_content = f"{doc_page_content}\n{cleaned_page_content}"
     documents = [Document(page_content=doc_page_content, metadata=doc_meta)]
 
-    # text_splitter = ChineseRecursiveTextSplitter(
-        # chunk_size=102400, chunk_overlap=4096, add_start_index=False
+    # text_splitter = ChineseRecursiveTextSplitter.from_huggingface_tokenizer(
+    #     tokenizer=tokenizer,
+    #     chunk_size=1000,
+    #     chunk_overlap=200,
     # )
-    # docs = text_splitter.split_documents(documents)
+    text_splitter = ChineseRecursiveTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        keep_separator=True,
+        is_separator_regex=True,
+        strip_whitespace=True,
+    )
+    documents = text_splitter.split_documents(documents)
 
     # print(documents)
 
@@ -79,8 +92,11 @@ def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
 
-if __name__ == '__main__':
-    retriever = init_retriever()
+def init_chain():
+    global chain, retriever_chain
+
+    llm = init_llm()
+    retriever = init_retriever(llm.tokenizer)
 
     template = \
 """请根据以下背景知识:
@@ -92,20 +108,25 @@ if __name__ == '__main__':
     prompt = CustomChatPromptTemplate.from_messages(template_messages)
 
     retriever_chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | prompt)
-    # print("====================================")
-    # print(retriever_chain.invoke(question).to_string())
+        {"context": retriever | format_docs, "question": RunnablePassthrough()} | prompt)
 
-    # sys.exit()
-
-    llm = init_llm()
     chain = (retriever_chain | llm | ResponseParser())
-    print("====================================")
-    question = "根据报告，科大讯飞公司上半年扣非净利润较上年同期有什么变化？发生变化的主要原因是？"
-    print(chain.invoke(question))
 
-    print("====================================")
-    question = "报告中提到的股票回购数量和成交价格是多少？"
-    print(chain.invoke(question))
+
+def chain_invoke(
+    question: str,
+    ):
+    print(retriever_chain.invoke(question).to_string())
+    print("---------------------------------------------------------------------------")
+    print(chain.invoke(question), "\n\n")
+
+
+if __name__ == '__main__':
+    init_chain()
+
+    chain_invoke("根据报告，科大讯飞公司上半年扣非净利润较上年同期有什么变化？发生变化的主要原因是？")
+
+    chain_invoke("报告中提到的股票回购数量和成交价格是多少？")
+
+    chain_invoke("讯飞星火认知大模型在报告期内取得的主要进展是?")
 
