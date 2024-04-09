@@ -2,8 +2,7 @@ import ast
 import json
 
 from transformers import AutoTokenizer, AutoModel, AutoConfig
-from typing import List, Optional
-
+from typing import List, Mapping, Optional, Any
 from langchain.llms.base import LLM
 from langchain_core.output_parsers.transform import BaseTransformOutputParser
 
@@ -39,23 +38,36 @@ Action:
 
 
 class ChatGLM3(LLM):
-    max_token: int = 8192
-    do_sample: bool = True
-    temperature: float = 0.8
-    top_p = 0.8
     tokenizer: object = None
     model: object = None
     history: List = []
     has_search: bool = False
+    max_token: int = 8192
+    do_sample: bool = True
+    temperature: float = 0.8
+    top_k = 50
+    top_p = 0.8
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
 
     @property
     def _llm_type(self) -> str:
         return "ChatGLM3"
+    
+    @property
+    def _identifying_params(self) -> Mapping[str, Any]:
+        """Get the identifying parameters."""
+        return {
+            "max_token": self.max_token,
+            "do_sample": self.do_sample,
+            "temperature": self.temperature,
+            "top_k": self.top_k,
+            "top_p": self.top_p,
+        }
 
     def load_model(self, model_name_or_path=None):
+        print(f"[ChatGLM3] load from {model_name_or_path}")
         model_config = AutoConfig.from_pretrained(
             model_name_or_path,
             trust_remote_code=True
@@ -163,7 +175,12 @@ Action:
 {json.dumps(final_answer_json, ensure_ascii=False)}
 ```"""
 
-    def _call(self, prompt: str, history: List = [], stop: Optional[List[str]] = ["<|user|>"]):
+    def _call(
+        self,
+        prompt: str,
+        history: List = [],
+        stop: Optional[List[str]] = ["<|user|>"],
+        ):
         if not self.has_search:
             self.history, query = self._tool_history(prompt)
         else:
@@ -171,6 +188,8 @@ Action:
             query = ""
         # print(f"\n1: history: {json.dumps(self.history, ensure_ascii=False)}\n")
         # print(f"query: {query}\n")
+        print(f"temperature: {self.temperature} max_token: {self.max_token}",
+            f"top_k: {self.top_k} top_p: {self.top_p}")
         _, self.history = self.model.chat(
             self.tokenizer,
             query,
@@ -178,6 +197,8 @@ Action:
             do_sample=self.do_sample,
             max_length=self.max_token,
             temperature=self.temperature,
+            top_k=self.top_k,
+            top_p=self.top_p,
         )
         # print(f"\n2: history: {json.dumps(self.history, ensure_ascii=False)}\n")
         response = self._extract_tool()

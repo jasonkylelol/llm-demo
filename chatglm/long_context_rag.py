@@ -10,7 +10,7 @@ from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTex
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, WebBaseLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.documents import Document
-from langchain_core.runnables import RunnableLambda, RunnablePassthrough, RunnableSerializable
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough, RunnableSerializable, ConfigurableField
 from langchain.prompts import (
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
@@ -37,7 +37,7 @@ temperature=0.2
 chain, retriever_chain = None, None
 
 
-def init_retriever(tokenizer):
+def init_retriever():
     model_name = embedding_model_path
     model_kwargs = {"device": embedding_device}
     encode_kwargs = {"normalize_embeddings": True}
@@ -61,14 +61,9 @@ def init_retriever(tokenizer):
         doc_page_content = f"{doc_page_content}\n{cleaned_page_content}"
     documents = [Document(page_content=doc_page_content, metadata=doc_meta)]
 
-    # text_splitter = ChineseRecursiveTextSplitter.from_huggingface_tokenizer(
-    #     tokenizer=tokenizer,
-    #     chunk_size=1000,
-    #     chunk_overlap=200,
-    # )
     text_splitter = ChineseRecursiveTextSplitter(
         chunk_size=1000,
-        chunk_overlap=200,
+        chunk_overlap=500,
         keep_separator=True,
         is_separator_regex=True,
         strip_whitespace=True,
@@ -85,6 +80,10 @@ def init_retriever(tokenizer):
 def init_llm():
     llm = ChatGLM3()
     llm.load_model(model_path)
+    llm = llm.configurable_fields(
+        temperature=ConfigurableField("temperature"),
+        max_token=ConfigurableField("max_token"),
+    )
     return llm
 
 
@@ -96,7 +95,7 @@ def init_chain():
     global chain, retriever_chain
 
     llm = init_llm()
-    retriever = init_retriever(llm.tokenizer)
+    retriever = init_retriever()
 
     template = \
 """请根据以下背景知识:
@@ -113,20 +112,22 @@ def init_chain():
     chain = (retriever_chain | llm | ResponseParser())
 
 
-def chain_invoke(
-    question: str,
-    ):
-    print(retriever_chain.invoke(question).to_string())
+def chain_invoke(question: str, temp: float):
+    # print(retriever_chain.invoke(question).to_string())
     print("---------------------------------------------------------------------------")
-    print(chain.invoke(question), "\n\n")
+    cfg = {
+        "max_token": max_new_tokens,
+        "temperature": temp,
+    }
+    print(chain.with_config(configurable=cfg).invoke(question), "\n\n")
 
 
 if __name__ == '__main__':
     init_chain()
 
-    chain_invoke("根据报告，科大讯飞公司上半年扣非净利润较上年同期有什么变化？发生变化的主要原因是？")
+    chain_invoke("根据报告，科大讯飞公司上半年扣非净利润较上年同期有什么变化？发生变化的主要原因是？", 0.1)
 
-    chain_invoke("报告中提到的股票回购数量和成交价格是多少？")
+    chain_invoke("报告中提到的股票回购数量和成交价格是多少？", 0.2)
 
-    chain_invoke("讯飞星火认知大模型在报告期内取得的主要进展是?")
+    chain_invoke("讯飞星火认知大模型在报告期内取得的主要进展是?", 0.3)
 
