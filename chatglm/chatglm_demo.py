@@ -1,7 +1,7 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
 
-device = "cuda:1" # the device to load the model onto
+device = "cuda" # the device to load the model onto
 max_new_tokens=1024
 top_k=50
 top_p=0.65

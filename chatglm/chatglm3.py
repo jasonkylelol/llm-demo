@@ -1,8 +1,41 @@
 import ast
 import json
-from langchain.llms.base import LLM
+
 from transformers import AutoTokenizer, AutoModel, AutoConfig
 from typing import List, Optional
+
+from langchain.llms.base import LLM
+from langchain_core.output_parsers.transform import BaseTransformOutputParser
+
+
+class ResponseParser(BaseTransformOutputParser[str]):
+    """OutputParser that parses LLMResult into the top likely string."""
+
+    @classmethod
+    def is_lc_serializable(cls) -> bool:
+        """Return whether this class is serializable."""
+        return True
+
+    @classmethod
+    def get_lc_namespace(cls) -> List[str]:
+        """Get the namespace of the langchain object."""
+        return ["langchain", "schema", "output_parser"]
+
+    @property
+    def _type(self) -> str:
+        """Return the output parser type for serialization."""
+        return "default"
+
+    def parse(self, text: str) -> str:
+        '''
+Action: 
+```
+{"action": "Final Answer", "action_input": "666"}
+```'''
+        text = text.strip()
+        text = text.lstrip("\nAction: \n```\n").rstrip("\n```")
+        obj = json.loads(text)
+        return obj.get("action_input")
 
 
 class ChatGLM3(LLM):
@@ -37,8 +70,13 @@ class ChatGLM3(LLM):
     def _tool_history(self, prompt: str):
         ans = []
 
-        tool_prompts = prompt.split(
-            "You have access to the following tools:\n\n")[1].split("\n\nUse a json blob")[0].split("\n")
+        tools_prompt_list = prompt.split(
+            "You have access to the following tools:\n\n")
+        
+        if len(tools_prompt_list) < 2:
+            return ans, prompt
+
+        tool_prompts = tools_prompt_list[1].split("\n\nUse a json blob")[0].split("\n")
         tools_json = []
 
         for tool_desc in tool_prompts:
