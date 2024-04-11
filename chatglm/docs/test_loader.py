@@ -1,14 +1,14 @@
 import sys,os
 sys.path.append(os.getcwd())
 
-from langchain_demo.custom.text_splitter import ChineseRecursiveTextSplitter
-from langchain_demo.custom.document_loaders import RapidOCRPDFLoader, RapidOCRDocLoader
+from custom.text_splitter import ChineseRecursiveTextSplitter
+from custom.document_loaders import RapidOCRPDFLoader, RapidOCRDocLoader
 from langchain_core.documents import Document
 import re
 
 
 def init_pdf_documents():
-    loader = RapidOCRPDFLoader("chatglm/docs/平台对接说明.pdf")
+    loader = RapidOCRPDFLoader("平台对接说明.pdf")
     documents = loader.load()
 
     doc_meta = None
@@ -38,7 +38,7 @@ def init_pdf_documents():
 
 
 def init_word_documents():
-    loader = RapidOCRDocLoader("chatglm/docs/平台对接说明.docx")
+    loader = RapidOCRDocLoader("平台对接说明.docx")
     documents = loader.load()
 
     doc_meta = None
@@ -69,5 +69,5 @@ def init_word_documents():
 
 if __name__ == '__main__':
     init_pdf_documents()
-    print("\n\n\n\n")
+    print("\n\n\n\n\n\n\n\n")
     init_word_documents()
