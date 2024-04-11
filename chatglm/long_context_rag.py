@@ -1,6 +1,5 @@
 import os, sys, json, re
 sys.path.append(os.getcwd())
-sys.path.append(os.path.join(os.getcwd(), "langchain_demo/custom"))
 
 from typing import List, Optional
 from chatglm3 import ChatGLM3, ResponseParser
@@ -157,13 +156,13 @@ def chain_invoke(question: str, temp: float):
 
 
 if __name__ == '__main__':
-    # init_chain()
+    init_chain()
 
-    # chain_invoke("根据报告，科大讯飞公司上半年扣非净利润较上年同期有什么变化？发生变化的主要原因是？", 0.1)
+    chain_invoke("根据报告，科大讯飞公司上半年扣非净利润较上年同期有什么变化？发生变化的主要原因是？", 0.1)
 
-    # chain_invoke("报告中提到的股票回购数量和成交价格是多少？", 0.2)
+    chain_invoke("报告中提到的股票回购数量和成交价格是多少？", 0.2)
 
-    # chain_invoke("讯飞星火认知大模型在报告期内取得的主要进展是?", 0.3)
+    chain_invoke("讯飞星火认知大模型在报告期内取得的主要进展是?", 0.3)
 
     init_word_documents()
 

@@ -3,7 +3,7 @@ from langchain.document_loaders.unstructured import UnstructuredFileLoader
 import cv2
 from PIL import Image
 import numpy as np
-from document_loaders.ocr import get_ocr
+from langchain_demo.custom.document_loaders.ocr import get_ocr
 import tqdm
 
 # PDF OCR 控制：只对宽高超过页面一定比例（图片宽/页面宽，图片高/页面高）的图片进行 OCR。
