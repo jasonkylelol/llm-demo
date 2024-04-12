@@ -45,7 +45,7 @@ def init_pdf_documents():
     for idx, doc in enumerate(documents):
         if idx == 0:
             doc_meta = doc.metadata
-        cleaned_page_content = re.sub(r'\n+', '\n', doc.page_content)
+        cleaned_page_content = re.sub(r'\s+', ' ', doc.page_content)
         # emoji_pattern = re.compile("[\U00010000-\U0010ffff]")
         # cleaned_page_content = emoji_pattern.sub('', cleaned_page_content)
         doc_page_content = f"{doc_page_content}\n{cleaned_page_content}"
@@ -72,7 +72,7 @@ def init_word_documents():
     for idx, doc in enumerate(documents):
         if idx == 0:
             doc_meta = doc.metadata
-        cleaned_page_content = re.sub(r'\n+', '\n', doc.page_content)
+        cleaned_page_content = re.sub(r'\s+', ' ', doc.page_content)
         # emoji_pattern = re.compile("[\U00010000-\U0010ffff]")
         # cleaned_page_content = emoji_pattern.sub('', cleaned_page_content)
         doc_page_content = f"{doc_page_content}\n{cleaned_page_content}"

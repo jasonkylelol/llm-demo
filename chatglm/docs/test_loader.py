@@ -8,7 +8,7 @@ import re
 
 
 def init_pdf_documents():
-    loader = RapidOCRPDFLoader("平台对接说明.pdf")
+    loader = RapidOCRPDFLoader("科大讯飞股份有限公司2023年半年度报告摘要.pdf")
     documents = loader.load()
 
     doc_meta = None
@@ -16,15 +16,20 @@ def init_pdf_documents():
     for idx, doc in enumerate(documents):
         if idx == 0:
             doc_meta = doc.metadata
-        cleaned_page_content = re.sub(r'\n+', '\n', doc.page_content)
+        cleaned_page_content = re.sub(r'\s+', ' ', doc.page_content)
         # emoji_pattern = re.compile("[\U00010000-\U0010ffff]")
         # cleaned_page_content = emoji_pattern.sub('', cleaned_page_content)
         doc_page_content = f"{doc_page_content}\n{cleaned_page_content}"
     documents = [Document(page_content=doc_page_content, metadata=doc_meta)]
 
+    # print(doc_page_content)
+    # print("====================================================================")
+
+    chunk_size = 500
+    chunk_overlap = chunk_size / 5
     text_splitter = ChineseRecursiveTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=500,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
         keep_separator=True,
         is_separator_regex=True,
         strip_whitespace=True,
@@ -38,7 +43,7 @@ def init_pdf_documents():
 
 
 def init_word_documents():
-    loader = RapidOCRDocLoader("平台对接说明.docx")
+    loader = RapidOCRDocLoader("平台接入手册v1.0.docx")
     documents = loader.load()
 
     doc_meta = None
@@ -46,15 +51,17 @@ def init_word_documents():
     for idx, doc in enumerate(documents):
         if idx == 0:
             doc_meta = doc.metadata
-        cleaned_page_content = re.sub(r'\n+', '\n', doc.page_content)
+        cleaned_page_content = re.sub(r'\s+', ' ', doc.page_content)
         # emoji_pattern = re.compile("[\U00010000-\U0010ffff]")
         # cleaned_page_content = emoji_pattern.sub('', cleaned_page_content)
         doc_page_content = f"{doc_page_content}\n{cleaned_page_content}"
     documents = [Document(page_content=doc_page_content, metadata=doc_meta)]
 
+    chunk_size = 500
+    chunk_overlap = chunk_size / 5
     text_splitter = ChineseRecursiveTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=500,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
         keep_separator=True,
         is_separator_regex=True,
         strip_whitespace=True,
@@ -68,6 +75,6 @@ def init_word_documents():
 
 
 if __name__ == '__main__':
-    init_pdf_documents()
-    print("\n\n\n\n\n\n\n\n")
+    # init_pdf_documents()
+    # print("\n\n\n\n\n\n\n\n")
     init_word_documents()
