@@ -52,6 +52,18 @@ class ChatGLM3LLM(CustomLLM):
             "`messages_to_prompt` that does so."
         ),
     )
+    max_new_tokens: int = Field(
+        default=8192,
+        description="The maximum number of tokens to generate.",
+        gt=0,
+    )
+    tokenizer_kwargs: dict = Field(
+        default_factory=dict, description="The kwargs to pass to the tokenizer."
+    )
+    model_kwargs: dict = Field(
+        default_factory=dict,
+        description="The kwargs to pass to the model during initialization.",
+    )
 
     _model: Any = PrivateAttr()
     _tokenizer: Any = PrivateAttr()
@@ -60,16 +72,18 @@ class ChatGLM3LLM(CustomLLM):
         model_name: str = "",
         device_map: Optional[str] = "auto",
         context_window: int = DEFAULT_CONTEXT_WINDOW,
+        max_new_tokens: int = 8192,
+        tokenizer_kwargs: Optional[dict] = None,
+        model_kwargs: Optional[dict] = None,
         ):
         self._model = AutoModelForCausalLM.from_pretrained(
-            model_name, device_map=device_map, trust_remote_code=True,
-        )
-        config_dict = self._model.config.to_dict()
-        context_window = int(config_dict.get("seq_length")) or 8192
+            model_name, device_map=device_map, trust_remote_code=True, **model_kwargs)
 
         self._tokenizer = AutoTokenizer.from_pretrained(
-            model_name, device_map=device_map, trust_remote_code=True
-        )
+            model_name, device_map=device_map, trust_remote_code=True, **tokenizer_kwargs)
+        
+        config_dict = self._model.config.to_dict()
+        context_window = int(config_dict.get("seq_length")) or 8192
 
         # print(kwargs)
         super().__init__(
@@ -99,6 +113,7 @@ class ChatGLM3LLM(CustomLLM):
     def complete(
         self, prompt: str, formatted: bool = False, **kwargs: Any
     ) -> CompletionResponse:
+        # print(f"ChatGLM3LLM.complete: {prompt}")
         return CompletionResponse(text="use chat", raw={"model_output": None})
 
 
@@ -106,6 +121,7 @@ class ChatGLM3LLM(CustomLLM):
     def stream_complete(
         self, prompt: str, formatted: bool = False, **kwargs: Any
     ) -> CompletionResponseGen:
+        # print(f"ChatGLM3LLM.stream_complete: {prompt}")
         # create generator based off of streamer
         def gen() -> CompletionResponseGen:
             yield CompletionResponse(text="use stream_chat", delta="use stream_chat")
@@ -114,6 +130,7 @@ class ChatGLM3LLM(CustomLLM):
 
     @llm_chat_callback()
     def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> ChatResponse:
+        # print(f"ChatGLM3LLM.chat: {messages}")
         messages = self.format_messages(messages)
         prompt = self._tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         response, history = self._model.chat(self._tokenizer, prompt, history=[], **kwargs)
@@ -129,6 +146,7 @@ class ChatGLM3LLM(CustomLLM):
     def stream_chat(
         self, messages: Sequence[ChatMessage], **kwargs: Any
     ) -> ChatResponseGen:
+        # print(f"ChatGLM3LLM.stream_chat: {messages}")
         messages = self.format_messages(messages)
         prompt = self._tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         
