@@ -8,17 +8,20 @@ logging.basicConfig(
 
 import torch
 from transformers import BitsAndBytesConfig
+from pyvis.network import Network
 from llamaindex_demo.chatglm_llm import ChatGLM3LLM
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.base.llms.types import (
     ChatMessage,
     ChatResponse,
 )
-from llama_index.core.service_context import ServiceContext
 from llama_index.core import SimpleDirectoryReader, KnowledgeGraphIndex
 from llama_index.core.graph_stores import SimpleGraphStore
 from llama_index.core import StorageContext
 from llama_index.core.query_engine import KnowledgeGraphQueryEngine
+from llama_index.core import Settings
+from llama_index.core.node_parser import SentenceSplitter
+
 
 model_path = "/root/huggingface/models/THUDM/chatglm3-6b-128k"
 embedding_model_path = "/root/huggingface/models/BAAI/bge-large-zh-v1.5"
@@ -44,33 +47,34 @@ def init_documents():
     ]
     documents = SimpleDirectoryReader(
         input_files=input_files
-    ).load_data()
+    ).load_data(show_progress=True)
     return documents
 
 
-def init_graph_query_engine(service_context, documents):
+def init_graph_query_engine(documents):
     persist_path = "/root/github/llm-demo/cache/graph_store/graph_store.json"
-    graph_store = SimpleGraphStore().from_persist_path(persist_path)
-    # graph_store = SimpleGraphStore()
+    # graph_store = SimpleGraphStore().from_persist_path(persist_path)
+    graph_store = SimpleGraphStore()
     storage_context = StorageContext.from_defaults(graph_store=graph_store)
 
     # NOTE: can take a while!
     index = KnowledgeGraphIndex.from_documents(
         documents,
         show_progress = True,
-        max_triplets_per_chunk = 3,
-        service_context = service_context,
+        max_triplets_per_chunk = 10,
         storage_context = storage_context,
         include_embeddings = True,
     )
 
     query_engine = index.as_query_engine(
-        include_text=True,
-        response_mode="tree_summarize",
-        verbose=True,
-        # embedding_mode="hybrid",
-        retriever_mode="hybrid",
+        include_text = True,
+        response_mode = "tree_summarize",
+        verbose = True,
+        retriever_mode = "hybrid",
         similarity_top_k = 3,
+        max_keywords_per_query = 3,
+        num_chunks_per_query = 3,
+        graph_store_query_depth = 2,
     )
 
     # query_engine = KnowledgeGraphQueryEngine(
@@ -79,8 +83,8 @@ def init_graph_query_engine(service_context, documents):
     #     verbose=True,
     # )
 
-    # graph_store.persist(persist_path)
-
+    graph_store.persist(persist_path)
+    graph_visualizing(index)
     return query_engine
 
 
@@ -91,30 +95,36 @@ def init_llm():
         bnb_4bit_quant_type="nf4",
         bnb_4bit_use_double_quant=True,
     )
-    
     print(f"load model from: {model_path}")
     llm = ChatGLM3LLM(
         model_name=model_path,
         device_map="cuda",
         # model_kwargs={"quantization_config": quantization_config},
     )
-
     embed_model = init_embed_model()
 
-    return llm, embed_model
+    Settings.llm = llm
+    Settings.embed_model = embed_model
+    Settings.node_parser = SentenceSplitter(chunk_size=512, chunk_overlap=128)
+    Settings.num_output = 1024
+    Settings.context_window = context_window
+
+
+def graph_visualizing(index: KnowledgeGraphIndex):
+    g = index.get_networkx_graph()
+    net = Network(cdn_resources="in_line", directed=True)
+    net.from_nx(g)
+    
+    network_html_path = "cache/knowledge_graph_network.html"
+    html_content = net.generate_html(name=network_html_path)
+    with open(network_html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
 
 
 if __name__ == "__main__":
-    llm, embed_model = init_llm()
+    init_llm()
     documents = init_documents()
-
-    service_context = ServiceContext.from_defaults(
-        chunk_size=256,
-        llm=llm,
-        embed_model=embed_model,
-    )
-
-    query_engine = init_graph_query_engine(service_context, documents)
+    query_engine = init_graph_query_engine(documents)
 
     response = query_engine.query(
         "小米汽车售价",
