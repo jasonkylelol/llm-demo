@@ -8,7 +8,7 @@ device = "cuda" # the device to load the model onto
 max_new_tokens=1024
 top_k=50
 top_p=0.65
-temperature=0.7
+temperature=0.8
 
 model_path = "/root/huggingface/models/THUDM/chatglm3-6b-128k/"
 # model_path = "/root/huggingface/models/THUDM/chatglm3-6b/"
@@ -51,27 +51,46 @@ print("---------------------------------------------------------------")
 # print(f"response: {response}\n\n")
 # print(f"history: {history}\n\n")
 
-last_resp = ""
+
 def extract_added_content(str1, str2):
     prefix_len = 0
     min_len = min(len(str1), len(str2))
     while prefix_len < min_len and str1[prefix_len] == str2[prefix_len]:
         prefix_len += 1
     added_content = str2[prefix_len:]
-    return added_content
+    return str2, added_content
 
+
+def stream_print(s):
+    sys.stdout.write(s)
+    sys.stdout.flush()
+
+
+last_resp = ""
+postfix_delimiter_filter = "<|user|>"
+postfix_delimiter = ""
 for resp, history in model.stream_chat(tokenizer, prompt,
-    max_length=max_new_tokens, do_sample=True,
-    top_p=top_p, temperature=temperature):
-
+    do_sample=True, top_p=top_p, temperature=temperature):
     if resp == "":
         continue
-
-    added_content = extract_added_content(last_resp, resp)
-    # print(added_content)
-    last_resp = resp
-    sys.stdout.write(added_content)
-    sys.stdout.flush()
+    last_resp, added_content = extract_added_content(last_resp, resp)
+    if added_content == "":
+        continue
+    if added_content in postfix_delimiter_filter:
+        postfix_delimiter += added_content
+        if len(postfix_delimiter) >= len(postfix_delimiter_filter):
+            if postfix_delimiter == postfix_delimiter_filter:
+                # print(f"\n[generator] need skip {postfix_delimiter_filter} from:\n{resp}", flush=True)
+                postfix_delimiter = ""
+                continue
+            else:
+                stream_print(postfix_delimiter)
+                postfix_delimiter = ""
+    else:
+        if len(postfix_delimiter) > 0:
+            stream_print(postfix_delimiter)
+            postfix_delimiter = ""
+        stream_print(added_content)
 
 print("\n---------------------------------------------------------------")
 print(last_resp)
