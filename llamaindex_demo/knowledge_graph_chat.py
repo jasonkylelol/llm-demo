@@ -7,6 +7,7 @@ logging.basicConfig(
 )  # logging.DEBUG for more verbose output
 
 import torch
+import gradio as gr
 from transformers import BitsAndBytesConfig
 from pyvis.network import Network
 from llamaindex_demo.chatglm_llm import ChatGLM3LLM
@@ -25,12 +26,14 @@ from llama_index.core.node_parser import SentenceSplitter
 
 model_path = "/root/huggingface/models/THUDM/chatglm3-6b-128k"
 embedding_model_path = "/root/huggingface/models/BAAI/bge-large-zh-v1.5"
+network_html_path = "cache/knowledge_graph_network.html"
 max_new_tokens=1024
 top_k=50
 top_p=0.65
 temperature=0.7
 context_window=131072
 
+query_engine = None
 
 def init_embed_model():
     embed_model = HuggingFaceEmbedding(model_name=embedding_model_path,
@@ -53,8 +56,8 @@ def init_documents():
 
 def init_graph_query_engine(documents):
     persist_path = "/root/github/llm-demo/cache/graph_store/graph_store.json"
-    # graph_store = SimpleGraphStore().from_persist_path(persist_path)
-    graph_store = SimpleGraphStore()
+    graph_store = SimpleGraphStore().from_persist_path(persist_path)
+    # graph_store = SimpleGraphStore()
     storage_context = StorageContext.from_defaults(graph_store=graph_store)
 
     # NOTE: can take a while!
@@ -65,7 +68,7 @@ def init_graph_query_engine(documents):
         storage_context = storage_context,
         include_embeddings = True,
     )
-
+    global query_engine
     query_engine = index.as_query_engine(
         include_text = True,
         response_mode = "tree_summarize",
@@ -83,7 +86,7 @@ def init_graph_query_engine(documents):
     #     verbose=True,
     # )
 
-    graph_store.persist(persist_path)
+    # graph_store.persist(persist_path)
     graph_visualizing(index)
     return query_engine
 
@@ -112,13 +115,42 @@ def init_llm():
 
 def graph_visualizing(index: KnowledgeGraphIndex):
     g = index.get_networkx_graph()
-    net = Network(cdn_resources="in_line", directed=True)
+    net = Network(cdn_resources="remote", directed=True, notebook=False)
     net.from_nx(g)
     
-    network_html_path = "cache/knowledge_graph_network.html"
-    html_content = net.generate_html(name=network_html_path)
-    with open(network_html_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
+    net.write_html(name=network_html_path)
+
+    # html_content = net.generate_html(name=network_html_path)
+    # with open(network_html_path, "w", encoding="utf-8") as f:
+        # f.write(html_content)
+
+
+def on_submit(query: str) -> str:
+    global query_engine
+
+    response = query_engine.query(query)
+    return response.response
+
+
+def render_html_content() -> str:
+    with open(network_html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return html_content
+
+
+def init_blocks():
+    with gr.Blocks() as app:
+        gr.Markdown("# 知识图谱对话")
+        with gr.Row():
+            with gr.Column(scale=1):
+                query = gr.Textbox(label="检索内容")
+                submit_btn = gr.Button("提交", variant="primary")
+                graph_visualizing_btn = gr.Button("知识图谱可视化", variant="secondary", link="http://192.168.0.20:38061/")
+            with gr.Column(scale=4):
+                result = gr.TextArea(label="检索结果")
+        inputs = [query]
+        submit_btn.click(fn=on_submit, inputs=inputs, outputs=[result])
+    return app
 
 
 if __name__ == "__main__":
@@ -126,7 +158,10 @@ if __name__ == "__main__":
     documents = init_documents()
     query_engine = init_graph_query_engine(documents)
 
-    response = query_engine.query(
-        "小米汽车售价",
-    )
-    print(response)
+    # response = query_engine.query(
+    #     "小米汽车售价",
+    # )
+    # print(type(response))
+
+    app = init_blocks()
+    app.queue(max_size=10).launch(server_name='0.0.0.0', server_port=8060, show_api=False)
