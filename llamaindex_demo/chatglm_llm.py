@@ -73,8 +73,8 @@ class ChatGLM3LLM(CustomLLM):
         device_map: Optional[str] = "auto",
         context_window: int = DEFAULT_CONTEXT_WINDOW,
         max_new_tokens: int = 8192,
-        tokenizer_kwargs: Optional[dict] = None,
-        model_kwargs: Optional[dict] = None,
+        tokenizer_kwargs: Optional[dict] = {},
+        model_kwargs: Optional[dict] = {},
         ):
         self._model = AutoModelForCausalLM.from_pretrained(
             model_name, device_map=device_map, trust_remote_code=True, **model_kwargs)
