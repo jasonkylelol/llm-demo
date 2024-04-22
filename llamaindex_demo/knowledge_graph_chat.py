@@ -240,7 +240,7 @@ if __name__ == "__main__":
     # print(type(response))
 
     th = threading.Thread(target=run_html_svr)
-    # th.daemon = True
+    th.daemon = True
     th.start()
 
     app = init_blocks()
