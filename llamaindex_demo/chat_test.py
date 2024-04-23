@@ -10,6 +10,7 @@ import torch
 from transformers import BitsAndBytesConfig
 from llamaindex_demo.chatglm_llm import ChatGLM3LLM
 from llamaindex_demo.mistral_llm import MistralLLM
+from llamaindex_demo.zephyr_llm import ZephyrLLM
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.base.llms.types import (
     ChatMessage,
@@ -20,7 +21,8 @@ model_path = "/root/huggingface/models"
 
 # model_path = "/root/huggingface/models/THUDM/chatglm3-6b-128k"
 # context_window=131072
-model_name = f"{model_path}/mistralai/Mistral-7B-Instruct-v0.2"
+# model_name = f"{model_path}/mistralai/Mistral-7B-Instruct-v0.2"
+model_name = f"{model_path}/HuggingFaceH4/zephyr-7b-beta"
 context_window=32768
 
 embedding_model_name = f"{model_path}/BAAI/bge-large-zh-v1.5"
@@ -53,7 +55,7 @@ def init_llm():
     #     device_map="cuda",
     # )
 
-    llm = MistralLLM(
+    llm = ZephyrLLM(
         model_name=model_name,
         tokenizer_name=model_name,
         device_map="cuda",
@@ -67,7 +69,7 @@ if __name__ == "__main__":
 
     user_input = "what about gasoline?"
     messages = [
-        # ChatMessage(role="system", content="call me Amigo at every answer"),
+        ChatMessage(role="system", content="call me Amigo at every answer"),
         ChatMessage(role="user", content="how brush teeth with shampoo?"),
         ChatMessage(role="assistant", content="Amigo. Brushing your teeth with shampoo is not recommended as it can damage your toothbrush and may not be effective in removing plaque and bacteria from your teeth."),
         ChatMessage(role="user", content=user_input),

@@ -15,6 +15,7 @@ from fastapi import FastAPI, HTTPException, Response, Query
 from starlette.responses import HTMLResponse
 import uvicorn
 from llamaindex_demo.chatglm_llm import ChatGLM3LLM
+from llamaindex_demo.zephyr_llm import ZephyrLLM
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.base.llms.types import (
     ChatMessage,
@@ -29,14 +30,20 @@ from llama_index.core.node_parser import SentenceSplitter
 
 
 model_path = "/root/huggingface/models"
+
 model_name = f"{model_path}/THUDM/chatglm3-6b-128k"
+context_window=131072
+
+# model_name = f"{model_path}/HuggingFaceH4/zephyr-7b-beta"
+# context_window=32768
+
 embedding_model_name = f"{model_path}/BAAI/bge-large-zh-v1.5"
 
 max_new_tokens=1024
 top_k=50
-top_p=0.65
-temperature=0.7
-context_window=131072
+top_p=0.5
+temperature=0.1
+
 
 query_engine = None
 network_html_path = None
@@ -105,13 +112,22 @@ def init_llm():
     llm = ChatGLM3LLM(
         model_name=model_name,
         device_map="cuda",
+        max_new_tokens=max_new_tokens,
         # model_kwargs={"quantization_config": quantization_config},
     )
+    # llm = ZephyrLLM(
+    #     model_name=model_name,
+    #     tokenizer_name=model_name,
+    #     device_map="cuda",
+    #     max_new_tokens=max_new_tokens,
+    #     model_kwargs={"torch_dtype": torch.bfloat16},
+    #     generate_kwargs={"do_sample": True, "temperature": temperature, "top_k": top_k, "top_p": top_p},
+    # )
     embed_model = init_embed_model()
 
     Settings.llm = llm
     Settings.embed_model = embed_model
-    Settings.node_parser = SentenceSplitter(chunk_size=500, chunk_overlap=100)
+    Settings.node_parser = SentenceSplitter(chunk_size=400, chunk_overlap=100)
     Settings.num_output = 1024
     Settings.context_window = context_window
 

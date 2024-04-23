@@ -40,7 +40,7 @@ from llama_index.core.types import BaseOutputParser, PydanticProgramMode
 logger = logging.getLogger(__name__)
 
 
-class MistralLLM(CustomLLM):
+class ZephyrLLM(CustomLLM):
     """HuggingFace LLM."""
 
     model_name: str = Field(
@@ -225,7 +225,7 @@ class MistralLLM(CustomLLM):
 
     @classmethod
     def class_name(cls) -> str:
-        return "Mistral_LLM"
+        return "Zephyr_LLM"
 
     @property
     def metadata(self) -> LLMMetadata:
@@ -244,8 +244,10 @@ class MistralLLM(CustomLLM):
                 {"role": message.role.value, "content": message.content}
                 for message in messages
             ]
-            tokens = self._tokenizer.apply_chat_template(messages_dict)
-            return self._tokenizer.decode(tokens)
+            tokens = self._tokenizer.apply_chat_template(messages_dict, tokenize=False, add_generation_prompt=True)
+            # return self._tokenizer.decode(tokens)
+            # print(f"tokens: {tokens}")
+            return tokens
 
         return generic_messages_to_prompt(messages)
 
@@ -278,6 +280,11 @@ class MistralLLM(CustomLLM):
         )
         completion_tokens = tokens[0][inputs["input_ids"].size(1) :]
         completion = self._tokenizer.decode(completion_tokens, skip_special_tokens=True)
+
+        print("-------------------------------- ZephyrLLM complete --------------------------------------")
+        print(prompt)
+        print(completion)
+        print("-------------------------------- ZephyrLLM complete --------------------------------------")
 
         return CompletionResponse(text=completion, raw={"model_output": tokens})
 
@@ -326,6 +333,11 @@ class MistralLLM(CustomLLM):
             for x in streamer:
                 text += x
                 yield CompletionResponse(text=text, delta=x)
+
+            print("-------------------------------- ZephyrLLM stream_complete --------------------------------------")
+            print(prompt)
+            print(text)
+            print("-------------------------------- ZephyrLLM stream_complete --------------------------------------")
 
         return gen()
 
