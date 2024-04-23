@@ -9,22 +9,30 @@ logging.basicConfig(
 import torch
 from transformers import BitsAndBytesConfig
 from llamaindex_demo.chatglm_llm import ChatGLM3LLM
+from llamaindex_demo.mistral_llm import MistralLLM
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.base.llms.types import (
     ChatMessage,
     ChatResponse,
 )
 
-model_path = "/root/huggingface/models/THUDM/chatglm3-6b-128k"
-embedding_model_path = "/root/huggingface/models/BAAI/bge-large-zh-v1.5"
+model_path = "/root/huggingface/models"
+
+# model_path = "/root/huggingface/models/THUDM/chatglm3-6b-128k"
+# context_window=131072
+model_name = f"{model_path}/mistralai/Mistral-7B-Instruct-v0.2"
+context_window=32768
+
+embedding_model_name = f"{model_path}/BAAI/bge-large-zh-v1.5"
+
 max_new_tokens=1024
 top_k=50
 top_p=0.65
 temperature=0.7
-context_window=131072
+
 
 def init_embed_model():
-    embed_model = HuggingFaceEmbedding(model_name=embedding_model_path,
+    embed_model = HuggingFaceEmbedding(model_name=embedding_model_name,
         device="cuda")
     # embeddings = embed_model.get_text_embedding("Hello World!")
     # print(len(embeddings))
@@ -39,11 +47,19 @@ def init_llm():
         bnb_4bit_use_double_quant=True,
     )
     
-    print(f"load model from: {model_path}")
-    llm = ChatGLM3LLM(
-        model_name=model_path,
+    print(f"load model from: {model_name}")
+    # llm = ChatGLM3LLM(
+    #     model_name=model_path,
+    #     device_map="cuda",
+    # )
+
+    llm = MistralLLM(
+        model_name=model_name,
+        tokenizer_name=model_name,
         device_map="cuda",
+        model_kwargs={"torch_dtype": torch.bfloat16},
     )
+
     return llm
 
 if __name__ == "__main__":
@@ -51,7 +67,7 @@ if __name__ == "__main__":
 
     user_input = "what about gasoline?"
     messages = [
-        ChatMessage(role="system", content="call me Amigo at every answer"),
+        # ChatMessage(role="system", content="call me Amigo at every answer"),
         ChatMessage(role="user", content="how brush teeth with shampoo?"),
         ChatMessage(role="assistant", content="Amigo. Brushing your teeth with shampoo is not recommended as it can damage your toothbrush and may not be effective in removing plaque and bacteria from your teeth."),
         ChatMessage(role="user", content=user_input),

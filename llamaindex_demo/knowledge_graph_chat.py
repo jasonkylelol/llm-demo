@@ -28,8 +28,9 @@ from llama_index.core import Settings
 from llama_index.core.node_parser import SentenceSplitter
 
 
-model_path = "/root/huggingface/models/THUDM/chatglm3-6b-128k"
-embedding_model_path = "/root/huggingface/models/BAAI/bge-large-zh-v1.5"
+model_path = "/root/huggingface/models"
+model_name = f"{model_path}/THUDM/chatglm3-6b-128k"
+embedding_model_name = f"{model_path}/BAAI/bge-large-zh-v1.5"
 
 max_new_tokens=1024
 top_k=50
@@ -41,7 +42,7 @@ query_engine = None
 network_html_path = None
 
 def init_embed_model():
-    embed_model = HuggingFaceEmbedding(model_name=embedding_model_path,
+    embed_model = HuggingFaceEmbedding(model_name=embedding_model_name,
         device="cuda")
     # embeddings = embed_model.get_text_embedding("Hello World!")
     # print(len(embeddings))
@@ -100,9 +101,9 @@ def init_llm():
         bnb_4bit_quant_type="nf4",
         bnb_4bit_use_double_quant=True,
     )
-    print(f"load model from: {model_path}")
+    print(f"load model from: {model_name}")
     llm = ChatGLM3LLM(
-        model_name=model_path,
+        model_name=model_name,
         device_map="cuda",
         # model_kwargs={"quantization_config": quantization_config},
     )
