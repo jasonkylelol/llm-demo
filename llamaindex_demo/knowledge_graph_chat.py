@@ -88,7 +88,7 @@ def init_graph_query_engine(basename, documents):
     if not os.path.exists(persist_path):
         graph_store.persist(persist_path)
 
-    graph_visualizing(basename, index)
+    save_graph_visualizing(basename, index)
     return engine
 
 
@@ -114,7 +114,7 @@ def init_llm():
     Settings.context_window = context_window
 
 
-def graph_visualizing(basename: str, index: KnowledgeGraphIndex):
+def save_graph_visualizing(basename: str, index: KnowledgeGraphIndex):
     global network_html_path
 
     g = index.get_networkx_graph()
@@ -136,7 +136,7 @@ def handle_upload_file(upload_file: str):
         print("invalid upload_file")
         return
     
-    basename = os.path.basename(upload_file.name)
+    basename, ext = os.path.splitext(os.path.basename(upload_file.name))
     documents = init_documents([upload_file.name])
     query_engine = None
     query_engine = init_graph_query_engine(basename, documents)
@@ -177,23 +177,32 @@ def handle_add_msg(query, chat_history):
     return gr.Textbox(value=None, interactive=False), chat_history + [[query, None]]
 
 
+def refresh_gv_button():
+    if query_engine:
+        print(f"network_html_path: {network_html_path}")
+        basename, ext = os.path.splitext(os.path.basename(network_html_path))
+        basename = basename.rstrip("_knowledge_graph_network")
+        gv_btn_value = f"可视化知识图谱: {basename}"
+        gv_btn_link = f"http://192.168.0.20:38061/graph_visualizing"
+        graph_visualizing_btn = gr.Button(gv_btn_value, variant="primary", 
+            interactive=True, link=gv_btn_link)
+    else:
+        print("graph is not initialized")
+        graph_visualizing_btn = gr.Button("当前知识图谱: 无", variant="primary", interactive=False)
+    return graph_visualizing_btn
+
+
+def uploading_gv_button():
+    return gr.Button("知识图谱初始化中...", variant="primary", interactive=False)
+
+
 def init_blocks():
     with gr.Blocks() as app:
         gr.Markdown("# 知识图谱对话")
         with gr.Row():
             with gr.Column(scale=1):
                 upload_file = gr.File(file_types=[".text"], label="知识图谱原始文件")
-                gv_btn_value = "当前知识图谱: 无"
-                gv_btn_link = None
-                gv_btn_interactive = False
-                if network_html_path:
-                    basename = os.path.basename(network_html_path)
-                    gv_btn_value = f"可视化知识图谱: {basename}"
-                    gv_btn_link = f"http://192.168.0.20:38061/graph_visualizing"
-                    gv_btn_interactive = True
-                graph_visualizing_btn = gr.Button(gv_btn_value, variant="primary", 
-                    interactive=gv_btn_interactive, link=gv_btn_link)
-                # graph_status = gr.Markdown("当前知识图谱: 无")
+                graph_visualizing_btn = refresh_gv_button()
             with gr.Column(scale=4):
                 chatbot = gr.Chatbot(label="chatroom", show_label=False)
                 with gr.Row(equal_height=True):
@@ -208,6 +217,10 @@ def init_blocks():
             lambda: gr.Textbox(interactive=True), None, [query])
         upload_file.upload(
             handle_upload_file, upload_file, graph_visualizing_btn)
+        upload_file.change(
+            uploading_gv_button, None, graph_visualizing_btn)
+        app.load(refresh_gv_button, None, graph_visualizing_btn)
+
     return app
 
 
@@ -221,7 +234,7 @@ def render_html_content() -> str:
 
 app = FastAPI()
 @app.get("/graph_visualizing")
-async def read_html():
+async def graph_visualizing():
     html_content = render_html_content()
     return HTMLResponse(content=html_content, status_code=200)
 
