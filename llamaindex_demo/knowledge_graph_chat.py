@@ -75,6 +75,7 @@ def init_graph_query_engine(basename, documents):
         include_embeddings = True,
     )
     engine = index.as_query_engine(
+        streaming=True,
         include_text = True,
         response_mode = "tree_summarize",
         verbose = True,
@@ -153,23 +154,33 @@ def handle_chat(chat_history):
         yield chat_history
         return
 
+    query = chat_history[-1][0]
+    streaming_resp = query_engine.query(query)
+    # streaming_resp.print_response_stream()
+    response_txt = ""
+    chat_history[-1][1] = ""
+    for text in streaming_resp.response_gen:
+        # print(text, end="", flush=True)
+        chat_history[-1][1] += text
+        yield chat_history
+        # response_txt += text
+
     # response = query_engine.query(query)
     # return response.response
 
     # print(chat_history)
     # print("---------------------------------------------------------------")
 
-    chat_history[-1][1] = ""
-
-    bot_message = random.choice([
-        "你有这么高速运转的机械进入中国，记住我给出的原理，小的时候就是研发人，就是研发这个东西的原理是阴间政权管着",
-        "知道为什么有生灵给他运转先位，还有专门饲养这个，为什么地下产这种东西，它管着它说是五世同堂旗下子孙，你以为我跟你闹着玩呢",
-        "你不警察吗，黄龙江一派全都带蓝牙，黄龙江我告我告诉你，在阴间是是那个化名，化名我小舅，亲小舅，赵金兰的那个嫡子嫡孙"])
-    for char in bot_message:
-        chat_history[-1][1] += char
-        # print(chat_history)
-        time.sleep(0.05)
-        yield chat_history
+    # chat_history[-1][1] = ""
+    # bot_message = random.choice([
+    #     "你有这么高速运转的机械进入中国，记住我给出的原理，小的时候就是研发人，就是研发这个东西的原理是阴间政权管着",
+    #     "知道为什么有生灵给他运转先位，还有专门饲养这个，为什么地下产这种东西，它管着它说是五世同堂旗下子孙，你以为我跟你闹着玩呢",
+    #     "你不警察吗，黄龙江一派全都带蓝牙，黄龙江我告我告诉你，在阴间是是那个化名，化名我小舅，亲小舅，赵金兰的那个嫡子嫡孙"])
+    # for char in bot_message:
+    #     chat_history[-1][1] += char
+    #     # print(chat_history)
+    #     time.sleep(0.05)
+    #     yield chat_history
 
 
 def handle_add_msg(query, chat_history):
@@ -226,7 +237,7 @@ def init_blocks():
 
 def render_html_content() -> str:
     if not network_html_path:
-        return f"<html><b>file not exis</b></html>"
+        return f"<html><b>file not exist</b></html>"
     with open(network_html_path, "r", encoding="utf-8") as f:
         html_content = f.read()
     return html_content

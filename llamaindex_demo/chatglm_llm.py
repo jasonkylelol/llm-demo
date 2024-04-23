@@ -130,10 +130,13 @@ class ChatGLM3LLM(CustomLLM):
 
     @llm_chat_callback()
     def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> ChatResponse:
-        # print(f"ChatGLM3LLM.chat: {messages}")
+        print("-------------------------------- ChatGLM3LLM chat --------------------------------------")
         messages = self.format_messages(messages)
         prompt = self._tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         response, history = self._model.chat(self._tokenizer, prompt, history=[], **kwargs)
+        print(prompt)
+        print(response)
+        print("-------------------------------- ChatGLM3LLM chat --------------------------------------")
         return ChatResponse(
             message=ChatMessage(
                 role=MessageRole.ASSISTANT,
@@ -146,13 +149,14 @@ class ChatGLM3LLM(CustomLLM):
     def stream_chat(
         self, messages: Sequence[ChatMessage], **kwargs: Any
     ) -> ChatResponseGen:
-        # print(f"ChatGLM3LLM.stream_chat: {messages}")
         messages = self.format_messages(messages)
         prompt = self._tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         
         max_length = self.context_window
         # create generator based off of streamer
         def gen() -> ChatResponseGen:
+            print("-------------------------------- ChatGLM3LLM stream_chat --------------------------------------")
+            print(prompt)
             last_resp = ""
             postfix_delimiter_filter = "<|user|>"
             postfix_delimiter = ""
@@ -195,6 +199,8 @@ class ChatGLM3LLM(CustomLLM):
                         ),
                         delta=added_content,
                     )
+            print(last_resp.rstrip(postfix_delimiter_filter))
+            print("-------------------------------- ChatGLM3LLM stream_chat --------------------------------------")
         return gen()
 
 
