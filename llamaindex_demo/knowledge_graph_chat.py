@@ -14,6 +14,8 @@ from pyvis.network import Network
 from fastapi import FastAPI, HTTPException, Response, Query
 from starlette.responses import HTMLResponse
 import uvicorn
+from typing import Any, Callable, Dict, Generator, List, Optional, Type
+
 from llamaindex_demo.chatglm_llm import ChatGLM3LLM
 from llamaindex_demo.zephyr_llm import ZephyrLLM
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -27,12 +29,18 @@ from llama_index.core import StorageContext
 from llama_index.core.query_engine import KnowledgeGraphQueryEngine
 from llama_index.core import Settings
 from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.prompts.base import PromptTemplate
+from llama_index.core.prompts.prompt_type import PromptType
+from llama_index.core.readers.file.base import get_default_fs
 
 
 model_path = "/root/huggingface/models"
 
-model_name = f"{model_path}/THUDM/chatglm3-6b-128k"
-context_window=131072
+model_name = f"{model_path}/THUDM/chatglm3-6b"
+context_window = 8192
+
+# model_name = f"{model_path}/THUDM/chatglm3-6b-128k"
+# context_window=131072
 
 # model_name = f"{model_path}/HuggingFaceH4/zephyr-7b-beta"
 # context_window=32768
@@ -43,6 +51,23 @@ max_new_tokens=1024
 top_k=50
 top_p=0.5
 temperature=0.1
+
+
+CHN_KG_TRIPLET_EXTRACT_TMPL = (
+    "给定文本，以（主语、谓语、宾语）的形式提取最多 {max_knowledge_triplets} 个知识三元组。不要使用停用词。\n"
+    "---------------------\n"
+    "示例:\n"
+    "文本: 张红是李明的母亲\n"
+    "三元组:\n(张红, 是, 李明的母亲)\n"
+    "文本: 小鹿是一家于2015年在深圳成立的咖啡店\n"
+    "三元组:\n"
+    "(小鹿, 是, 咖啡店)\n"
+    "(小鹿, 成立于, 深圳)\n"
+    "(小鹿, 成立于, 2015年)\n"
+    "---------------------\n"
+    "文本: {text}\n"
+    "三元组:"
+)
 
 
 query_engine = None
@@ -57,12 +82,45 @@ def init_embed_model():
     return embed_model
 
 
+def custom_file_metadata_func(file_path: str) -> Dict:
+    fs = get_default_fs()
+    stat_result = fs.stat(file_path)
+
+    try:
+        file_name = os.path.basename(str(stat_result["name"]))
+    except Exception as e:
+        file_name = os.path.basename(file_path)
+
+    # creation_date = _format_file_timestamp(stat_result.get("created"))
+    # last_modified_date = _format_file_timestamp(stat_result.get("mtime"))
+    # last_accessed_date = _format_file_timestamp(stat_result.get("atime"))
+    default_meta = {
+        # "file_path": file_path,
+        "file_name": file_name,
+        # "file_type": mimetypes.guess_type(file_path)[0],
+        "file_size": stat_result.get("size"),
+        # "creation_date": creation_date,
+        # "last_modified_date": last_modified_date,
+        # "last_accessed_date": last_accessed_date,
+    }
+
+    print("default_meta:", default_meta)
+
+    # Return not null value
+    return {
+        meta_key: meta_value
+        for meta_key, meta_value in default_meta.items()
+        if meta_value is not None
+    }
+
+
 def init_documents(input_files):
     # input_files = [
     #     "/root/github/llm-demo/langchain_demo/rag/files/小米汽车发布会.txt"
     # ]
     documents = SimpleDirectoryReader(
-        input_files=input_files
+        input_files=input_files,
+        file_metadata=custom_file_metadata_func,
     ).load_data(show_progress=True)
     return documents
 
@@ -81,6 +139,10 @@ def init_graph_query_engine(basename, documents):
         max_triplets_per_chunk = 10,
         storage_context = storage_context,
         include_embeddings = True,
+        kg_triple_extract_template = PromptTemplate(
+            CHN_KG_TRIPLET_EXTRACT_TMPL,
+            prompt_type=PromptType.KNOWLEDGE_TRIPLET_EXTRACT,
+        ),
     )
     engine = index.as_query_engine(
         streaming=True,
