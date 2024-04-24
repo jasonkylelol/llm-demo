@@ -18,19 +18,16 @@ from typing import Any, Callable, Dict, Generator, List, Optional, Type
 
 from llamaindex_demo.chatglm_llm import ChatGLM3LLM
 from llamaindex_demo.zephyr_llm import ZephyrLLM
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.core.base.llms.types import (
-    ChatMessage,
-    ChatResponse,
+from llamaindex_demo.custom_prompt_template import (
+    CN_TRIPLET_EXTRACT_TMPL, CN_TREE_SUMMARIZE_PROMPT_SEL, CN_QUERY_KEYWORD_EXTRACT_TEMPLATE
 )
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import SimpleDirectoryReader, KnowledgeGraphIndex
 from llama_index.core.graph_stores import SimpleGraphStore
 from llama_index.core import StorageContext
-from llama_index.core.query_engine import KnowledgeGraphQueryEngine
+# from llama_index.core.query_engine import KnowledgeGraphQueryEngine
 from llama_index.core import Settings
 from llama_index.core.node_parser import SentenceSplitter
-from llama_index.core.prompts.base import PromptTemplate
-from llama_index.core.prompts.prompt_type import PromptType
 from llama_index.core.readers.file.base import get_default_fs
 
 
@@ -51,24 +48,6 @@ max_new_tokens=1024
 top_k=50
 top_p=0.5
 temperature=0.1
-
-
-CHN_KG_TRIPLET_EXTRACT_TMPL = (
-    "给定文本，以（主语、谓语、宾语）的形式提取最多 {max_knowledge_triplets} 个知识三元组。不要使用停用词。\n"
-    "---------------------\n"
-    "示例:\n"
-    "文本: 张红是李明的母亲\n"
-    "三元组:\n(张红, 是, 李明的母亲)\n"
-    "文本: 小鹿是一家于2015年在深圳成立的咖啡店\n"
-    "三元组:\n"
-    "(小鹿, 是, 咖啡店)\n"
-    "(小鹿, 成立于, 深圳)\n"
-    "(小鹿, 成立于, 2015年)\n"
-    "---------------------\n"
-    "文本: {text}\n"
-    "三元组:"
-)
-
 
 query_engine = None
 network_html_path = None
@@ -139,21 +118,21 @@ def init_graph_query_engine(basename, documents):
         max_triplets_per_chunk = 10,
         storage_context = storage_context,
         include_embeddings = True,
-        kg_triple_extract_template = PromptTemplate(
-            CHN_KG_TRIPLET_EXTRACT_TMPL,
-            prompt_type=PromptType.KNOWLEDGE_TRIPLET_EXTRACT,
-        ),
+        kg_triple_extract_template = CN_TRIPLET_EXTRACT_TMPL,
     )
+    #TODO need implement custom KGTableRetriever
     engine = index.as_query_engine(
         streaming=True,
         include_text = True,
         response_mode = "tree_summarize",
+        summary_template = CN_TREE_SUMMARIZE_PROMPT_SEL,
         verbose = True,
         retriever_mode = "hybrid",
         similarity_top_k = 3,
         max_keywords_per_query = 3,
         num_chunks_per_query = 3,
         graph_store_query_depth = 2,
+        query_keyword_extract_template = CN_QUERY_KEYWORD_EXTRACT_TEMPLATE,
     )
 
     if not os.path.exists(persist_path):
