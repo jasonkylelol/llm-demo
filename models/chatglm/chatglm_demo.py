@@ -19,22 +19,30 @@ tokenizer = AutoTokenizer.from_pretrained(model_path,
     device_map=device, trust_remote_code=True)
 
 print(type(model))
-print(model.config.to_dict())
+# print(model.config.to_dict())
 
-user_input = "what about gasoline?"
+user_input = "你好"
 
 messages = [
-    {
-        "role": "system",
-        "content": "call me Amigo at every answer",
-    },
+    # {
+    #     "role": "system",
+    #     "content": "call me Amigo at every answer",
+    # },
     {
         "role": "user",
-        "content": "how brush teeth with shampoo?",
+        "content": "你好",
     },
     {
         "role": "assistant",
-        "content": "Amigo. Brushing your teeth with shampoo is not recommended as it can damage your toothbrush and may not be effective in removing plaque and bacteria from your teeth.",
+        "content": "你好! How can I assist you today?",
+    },
+    {
+        "role": "user",
+        "content": "你好",
+    },
+    {
+        "role": "assistant",
+        "content": "你好",
     },
     {
         "role": "user",
@@ -51,14 +59,18 @@ print("---------------------------------------------------------------")
 # print(f"response: {response}\n\n")
 # print(f"history: {history}\n\n")
 
-
-def extract_added_content(str1, str2):
+def extract_new_token(str1, str2):
     prefix_len = 0
     min_len = min(len(str1), len(str2))
     while prefix_len < min_len and str1[prefix_len] == str2[prefix_len]:
         prefix_len += 1
-    added_content = str2[prefix_len:]
-    return str2, added_content
+    new_token = str2[prefix_len:]
+
+    if new_token.startswith("<"):
+        # print("-", new_token)
+        return str1, ""
+
+    return str2, new_token
 
 
 def stream_print(s):
@@ -66,31 +78,18 @@ def stream_print(s):
     sys.stdout.flush()
 
 
+instru_buf = ""
 last_resp = ""
-postfix_delimiter_filter = "<|user|>"
-postfix_delimiter = ""
 for resp, history in model.stream_chat(tokenizer, prompt,
     do_sample=True, top_p=top_p, temperature=temperature):
     if resp == "":
         continue
-    last_resp, added_content = extract_added_content(last_resp, resp)
-    if added_content == "":
+    
+    last_resp, new_token = extract_new_token(last_resp, resp)
+    if new_token == "":
         continue
-    if added_content in postfix_delimiter_filter:
-        postfix_delimiter += added_content
-        if len(postfix_delimiter) >= len(postfix_delimiter_filter):
-            if postfix_delimiter == postfix_delimiter_filter:
-                # print(f"\n[generator] need skip {postfix_delimiter_filter} from:\n{resp}", flush=True)
-                postfix_delimiter = ""
-                continue
-            else:
-                stream_print(postfix_delimiter)
-                postfix_delimiter = ""
-    else:
-        if len(postfix_delimiter) > 0:
-            stream_print(postfix_delimiter)
-            postfix_delimiter = ""
-        stream_print(added_content)
+    stream_print(new_token)
+    # print(new_token)
 
 print("\n---------------------------------------------------------------")
 print(last_resp)
