@@ -24,6 +24,8 @@ separators=[
     "",
 ]
 
+DEFAULT_QUERY_BGE_INSTRUCTION_ZH = "为这个句子生成表示以用于检索相关文章："
+
 
 def handle_rec_text_splitter(
     file, model_name, query, chunk_size, chunk_overlap) -> str:
@@ -81,22 +83,30 @@ def handle_semantic_chunker(file, model_name, query, breakpoint_threshold_type) 
 def init_embeddings_models():
     global embeddings_models
 
-    embedding_device = "cuda:1"
-    model_kwargs = {"device": embedding_device}
+    embedding_device = "cuda"
 
     embeddings_models["BAAI/bge-large-zh-v1.5"] = HuggingFaceBgeEmbeddings(
         model_name="/root/huggingface/models/BAAI/bge-large-zh-v1.5",
-        model_kwargs=model_kwargs,
+        model_kwargs={"device": embedding_device},
         encode_kwargs={"normalize_embeddings": True}
     )
-    embeddings_models["infgrad/stella-large-zh-v3-1792d"] = HuggingFaceEmbeddings(
-        model_name="/root/huggingface/models/infgrad/stella-large-zh-v3-1792d",
-        model_kwargs=model_kwargs,
-    )
-    embeddings_models["BAAI/bge-large-en-v1.5"] = HuggingFaceBgeEmbeddings(
-        model_name="/root/huggingface/models/BAAI/bge-large-en-v1.5",
-        model_kwargs=model_kwargs,
-        encode_kwargs={"normalize_embeddings": True}
+    # embeddings_models["infgrad/stella-large-zh-v3-1792d"] = HuggingFaceEmbeddings(
+    #     model_name="/root/huggingface/models/infgrad/stella-large-zh-v3-1792d",
+    #     model_kwargs=model_kwargs,
+    # )
+    # embeddings_models["BAAI/bge-large-en-v1.5"] = HuggingFaceBgeEmbeddings(
+    #     model_name="/root/huggingface/models/BAAI/bge-large-en-v1.5",
+    #     model_kwargs=model_kwargs,
+    #     encode_kwargs={"normalize_embeddings": True}
+    # )
+    embeddings_models["Alibaba-NLP/gte-Qwen1.5-7B-instruct"] = HuggingFaceBgeEmbeddings(
+        model_name="/root/huggingface/models/Alibaba-NLP/gte-Qwen1.5-7B-instruct",
+        model_kwargs={
+            "device": embedding_device,
+            "trust_remote_code": True,
+        },
+        query_instruction=DEFAULT_QUERY_BGE_INSTRUCTION_ZH,
+        embed_instruction="",
     )
 
     print("[init_embeddings_models]", embeddings_models.keys())
