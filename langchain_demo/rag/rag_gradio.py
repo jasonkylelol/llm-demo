@@ -19,7 +19,7 @@ temperature=0.1
 
 
 model, tokenizer = None, None
-documents = []
+document_dict = {}
 chat_file = ""
 
 
@@ -36,11 +36,25 @@ def extract_new_token(str1, str2):
     return str2, new_token
 
 
-def handle_chat(chat_history):
-    instru_buf = ""
+def handle_chat(chat_history, doc):
+    if doc is None:
+        err = f"必须选择一个文件"
+        print(err, flush=True)
+        chat_history[-1][1] = err
+        yield chat_history
+        return
+
+    if doc not in document_dict.keys():
+        err = f"文件: {doc} 不存在"
+        print(err, flush=True)
+        chat_history[-1][1] = err
+        yield chat_history
+        return
+
     last_resp = ""
     query = chat_history[-1][0]
     knowledge = ""
+    documents = document_dict.get(doc)
     for document in documents:
         knowledge = f"{knowledge}\n{document.page_content}"
     content = f"根据以下背景知识回答问题，回答中不要出现（根据上文，根据背景知识）等文案:\n{knowledge}\n问题: {query}"
@@ -91,36 +105,36 @@ def init_llm():
 
 
 def handle_upload_file(upload_file):
-    global documents, chat_file
+    global document_dict, chat_file
 
     if not upload_file:
         print("invalid upload_file", flush=True)
         return
     
     print(f"handle file: {upload_file}", flush=True)
-    
-    basename, ext = os.path.splitext(os.path.basename(upload_file))
+    file_basename = os.path.basename(upload_file)
+    basename, ext = os.path.splitext(file_basename)
     # print(basename, ext)
     if ext == '.pdf':
         loader = RapidOCRPDFLoader(upload_file)
         documents = loader.load()
+        document_dict[file_basename] = documents
     elif ext in ['.doc', '.docx']:
         loader = RapidOCRDocLoader(upload_file)
         documents = loader.load()
+        document_dict[file_basename] = documents
     elif ext == '.txt':
         loader = UnstructuredFileLoader(upload_file, autodetect_encoding=True)
         documents = loader.load()
+        document_dict[file_basename] = documents
     else:
         raise RuntimeError(f"invalid file: {upload_file}")
-    chat_file = f"{basename}{ext}"
-    print(f"init document: {basename}{ext} succeed", flush=True)
+    
+    print(f"init document: {file_basename} succeed", flush=True)
 
 
-def file_uploading():
-    return gr.Markdown("正在处理文件...")
-
-def file_loaded():
-    return gr.Markdown(f"当前使用的文件: {chat_file}")
+def doc_loaded():
+    return gr.Radio(choices=document_dict.keys(), label="可供选择的文件:")
 
 
 def init_blocks():
@@ -132,7 +146,7 @@ def init_blocks():
         with gr.Row():
             with gr.Column(scale=1):
                 upload_file = gr.File(file_types=[".text"], label="对话文件")
-                file_status = file_loaded()
+                docs = doc_loaded()
             with gr.Column(scale=4):
                 chatbot = gr.Chatbot(label="chatroom", show_label=False)
                 with gr.Row(equal_height=True):
@@ -143,12 +157,11 @@ def init_blocks():
                             size="sm", scale=1, variant="primary")
         query.submit(
             handle_add_msg, [query, chatbot], [query, chatbot]).then(
-            handle_chat, chatbot, chatbot).then(
-            lambda: gr.Textbox(interactive=True), None, [query])
+            handle_chat, inputs=[chatbot, docs], outputs=chatbot).then(
+            lambda: gr.Textbox(interactive=True), outputs=[query])
         upload_file.upload(handle_upload_file, upload_file).then(
-            file_loaded, outputs=file_status)
-        upload_file.change(file_uploading, outputs=file_status)
-        app.load(file_loaded, outputs=file_status)
+            doc_loaded, outputs=docs)
+        app.load(doc_loaded, outputs=docs)
 
     return app
 
