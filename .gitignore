@@ -5,3 +5,4 @@ cache
 cache/*
 *.doc
 *.docx
+nohup.out

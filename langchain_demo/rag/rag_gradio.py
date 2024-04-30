@@ -1,10 +1,12 @@
-import sys, os
+import sys, os, logging
 import gradio as gr
 
 from transformers import AutoTokenizer, AutoModel, AutoConfig
 from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
 from langchain_demo.custom.document_loaders import RapidOCRPDFLoader, RapidOCRDocLoader
 
+logging.basicConfig(
+    stream=sys.stdout, level=logging.INFO)
 
 device="cuda"
 model_path = "/root/huggingface/models"
@@ -49,7 +51,7 @@ def handle_chat(chat_history):
         }
     ]
     prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    print(f"{prompt}\n\n")
+    print(f"{prompt}\n\n", flush=True)
 
     chat_history[-1][1] = ""
     for resp, history in model.stream_chat(tokenizer, prompt,
@@ -71,7 +73,7 @@ def handle_add_msg(query, chat_history):
 def init_llm():
     global model
     global tokenizer
-    print(f"load from {model_full}")
+    print(f"load from {model_full}", flush=True)
     model_config = AutoConfig.from_pretrained(
         model_full,
         trust_remote_code=True
@@ -92,10 +94,10 @@ def handle_upload_file(upload_file):
     global documents, chat_file
 
     if not upload_file:
-        print("invalid upload_file")
+        print("invalid upload_file", flush=True)
         return
     
-    print(f"handle file: {upload_file}")
+    print(f"handle file: {upload_file}", flush=True)
     
     basename, ext = os.path.splitext(os.path.basename(upload_file))
     # print(basename, ext)
@@ -111,7 +113,7 @@ def handle_upload_file(upload_file):
     else:
         raise RuntimeError(f"invalid file: {upload_file}")
     chat_file = f"{basename}{ext}"
-    print(f"init document: {basename}{ext} succeed")
+    print(f"init document: {basename}{ext} succeed", flush=True)
 
 
 def file_uploading():
@@ -124,8 +126,9 @@ def file_loaded():
 def init_blocks():
     with gr.Blocks() as app:
         gr.Markdown("# RAG\n"
-            f"### 当前模型: {model_name}\n"
-            f"### context-window: {context_window}")
+            "将整个文件内容作为问题的上下文信息  \n"
+            f"{model_name}  \n"
+            f"context-window: {context_window}")
         with gr.Row():
             with gr.Column(scale=1):
                 upload_file = gr.File(file_types=[".text"], label="对话文件")
@@ -142,16 +145,17 @@ def init_blocks():
             handle_add_msg, [query, chatbot], [query, chatbot]).then(
             handle_chat, chatbot, chatbot).then(
             lambda: gr.Textbox(interactive=True), None, [query])
-        upload_file.upload(handle_upload_file, upload_file).then(file_loaded, outputs=file_status)
+        upload_file.upload(handle_upload_file, upload_file).then(
+            file_loaded, outputs=file_status)
         upload_file.change(file_uploading, outputs=file_status)
         app.load(file_loaded, outputs=file_status)
 
     return app
 
 
-# nohup CUDA_VISIBLE_DEVICES=1 python langchain_demo/rag/rag_gradio.py > logs.txt 2>&1 &
+# nohup langchain_demo/rag/svc_start.sh > logs.txt 2>&1 &
 if __name__ == "__main__":
     init_llm()
 
     app = init_blocks()
-    app.queue(max_size=10).launch(server_name='0.0.0.0', server_port=8060, show_api=False, share=True)
+    app.queue(max_size=10).launch(server_name='0.0.0.0', server_port=8060, show_api=False, share=False)
