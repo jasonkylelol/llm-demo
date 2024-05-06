@@ -157,9 +157,8 @@ def init_blocks():
                     choices=["RecursiveCharacterTextSplitter", "SemanticChunker", "ChineseRecursiveTextSplitter"],
                     value="RecursiveCharacterTextSplitter")
                 embeddings_model = gr.Dropdown(label="embeddings_model",
-                        choices=["BAAI/bge-large-zh-v1.5", "infgrad/stella-large-zh-v3-1792d", "BAAI/bge-large-en-v1.5"],
-                        value="BAAI/bge-large-zh-v1.5",
-                        info="中文: bge-large-zh-v1.5, stella-large-zh-v3-1792d  英文: bge-large-en-v1.5")
+                        choices=["BAAI/bge-large-zh-v1.5", "Alibaba-NLP/gte-Qwen1.5-7B-instruct"],
+                        value="BAAI/bge-large-zh-v1.5")
                 with gr.Group() as recursive_character_params:
                     # recursive_character_params.visible = True
                     # chunk_size=1000, chunk_overlap=400, add_start_index=False

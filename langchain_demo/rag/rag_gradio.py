@@ -57,7 +57,9 @@ def handle_chat(chat_history, doc):
     documents = document_dict.get(doc)
     for document in documents:
         knowledge = f"{knowledge}\n{document.page_content}"
-    content = f"根据以下背景知识回答问题，回答中不要出现（根据上文，根据背景知识）等文案:\n{knowledge}\n问题: {query}"
+    content = ("根据以下背景知识回答问题，回答中不要出现（根据上文，根据背景知识，根据 XX 文档）等文案，"
+        "如果问题与背景知识不相关，或无法从中得到答案，请说“根据已知信息无法回答该问题”，不允许在答案中添加编造成分，答案请使用中文。\n"
+        f"背景知识: \n{knowledge}\n问题: {query}")
     messages = [
         {
             "role": "user",
@@ -69,8 +71,9 @@ def handle_chat(chat_history, doc):
 
     try:
         chat_history[-1][1] = ""
+        # top_p=top_p,
         for resp, history in model.stream_chat(tokenizer, prompt,
-            do_sample=True, top_p=top_p, temperature=temperature):
+            do_sample=True, temperature=temperature):
             if resp == "":
                 continue
             last_resp, new_token = extract_new_token(last_resp, resp)
@@ -111,13 +114,12 @@ def init_llm():
         device_map=device).eval()
 
 
-# TODO add markdown status text in this
 def handle_upload_file(upload_file):
     global document_dict, chat_file
 
     if not upload_file:
         print("invalid upload_file", flush=True)
-        return
+        return gr.Markdown("invalid upload file")
     
     print(f"handle file: {upload_file}", flush=True)
     file_basename = os.path.basename(upload_file)
@@ -136,8 +138,8 @@ def handle_upload_file(upload_file):
         documents = loader.load()
         document_dict[file_basename] = documents
     else:
-        raise RuntimeError(f"invalid file: {upload_file}")
-    
+        print(f"invalid upload file: {upload_file}", flush=True)
+        return gr.Markdown(f"file: {file_basename} not support")
     print(f"init document: {file_basename} succeed", flush=True)
 
 
@@ -155,6 +157,7 @@ def init_blocks():
         with gr.Row():
             with gr.Column(scale=1):
                 upload_file = gr.File(file_types=[".text"], label="对话文件")
+                upload_status = gr.Markdown()
                 docs = doc_loaded()
             with gr.Column(scale=4):
                 chatbot = gr.Chatbot(label="chatroom", show_label=False)
@@ -168,7 +171,7 @@ def init_blocks():
             handle_add_msg, [query, chatbot], [query, chatbot]).then(
             handle_chat, inputs=[chatbot, docs], outputs=chatbot).then(
             lambda: gr.Textbox(interactive=True), outputs=[query])
-        upload_file.upload(handle_upload_file, upload_file).then(
+        upload_file.upload(handle_upload_file, inputs=upload_file, outputs=upload_status).then(
             doc_loaded, outputs=docs)
         app.load(doc_loaded, outputs=docs)
 
