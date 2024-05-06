@@ -39,14 +39,14 @@ def extract_new_token(str1, str2):
 def handle_chat(chat_history, doc):
     if doc is None:
         err = f"必须选择一个文件"
-        print(err, flush=True)
+        print(f"[handle_chat] err: {err}", flush=True)
         chat_history[-1][1] = err
         yield chat_history
         return
 
     if doc not in document_dict.keys():
         err = f"文件: {doc} 不存在"
-        print(err, flush=True)
+        print(f"[handle_chat] err: {err}", flush=True)
         chat_history[-1][1] = err
         yield chat_history
         return
@@ -67,16 +67,23 @@ def handle_chat(chat_history, doc):
     prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     print(f"{prompt}\n\n", flush=True)
 
-    chat_history[-1][1] = ""
-    for resp, history in model.stream_chat(tokenizer, prompt,
-        do_sample=True, top_p=top_p, temperature=temperature):
-        if resp == "":
-            continue
-        last_resp, new_token = extract_new_token(last_resp, resp)
-        if new_token == "":
-            continue
-        chat_history[-1][1] += new_token
+    try:
+        chat_history[-1][1] = ""
+        for resp, history in model.stream_chat(tokenizer, prompt,
+            do_sample=True, top_p=top_p, temperature=temperature):
+            if resp == "":
+                continue
+            last_resp, new_token = extract_new_token(last_resp, resp)
+            if new_token == "":
+                continue
+            chat_history[-1][1] += new_token
+            yield chat_history
+    except Exception as e:
+        err = f"[handle_chat] exception: {e}"
+        print(f"{err}", flush=True)
+        chat_history[-1][1] = err
         yield chat_history
+        return
 
 
 def handle_add_msg(query, chat_history):
@@ -104,6 +111,7 @@ def init_llm():
         device_map=device).eval()
 
 
+# TODO add markdown status text in this
 def handle_upload_file(upload_file):
     global document_dict, chat_file
 
@@ -142,7 +150,8 @@ def init_blocks():
         gr.Markdown("# RAG\n"
             "将整个文件内容作为问题的上下文信息  \n"
             f"{model_name}  \n"
-            f"context-window: {context_window}")
+            f"context-window: {context_window}  \n"
+            f"支持 txt, pdf, doc, docx")
         with gr.Row():
             with gr.Column(scale=1):
                 upload_file = gr.File(file_types=[".text"], label="对话文件")
