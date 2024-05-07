@@ -43,10 +43,17 @@ def handle_rec_text_splitter(
     docs = rec_text_splitter.split_documents(documents)
     print(f"[rec_text_splitter] [{model_name}] [chunks] {len(docs)}")
     vector_db = FAISS.from_documents(docs, embeddings_models[model_name])
-    resp_docs = vector_db.similarity_search(query)
+    resp_docs = vector_db.similarity_search(query, k=3)
     # embedding_vectors = embeddings_models[model_name].embed_query(query)
     # resp_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=1)
-    return resp_docs[0].page_content
+    # return resp_docs[0].page_content
+
+    resp_content = ""
+    for idx, doc in enumerate(resp_docs):
+        if idx >= 3:
+            break
+        resp_content = f"{resp_content}{doc.page_content}\n\n"
+    return resp_content
 
 
 def handle_chinese_rec_text_splitter(
@@ -60,10 +67,17 @@ def handle_chinese_rec_text_splitter(
     docs = rec_text_splitter.split_documents(documents)
     print(f"[chinese_rec_text_splitter] [{model_name}] [chunks] {len(docs)}")
     vector_db = FAISS.from_documents(docs, embeddings_models[model_name])
-    resp_docs = vector_db.similarity_search(query)
+    resp_docs = vector_db.similarity_search(query, k=3)
     # embedding_vectors = embeddings_models[model_name].embed_query(query)
     # resp_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=1)
-    return resp_docs[0].page_content
+    # return resp_docs[0].page_content
+
+    resp_content = ""
+    for idx, doc in enumerate(resp_docs):
+        if idx >= 3:
+            break
+        resp_content = f"{resp_content}{doc.page_content}\n\n"
+    return resp_content
 
 
 def handle_semantic_chunker(file, model_name, query, breakpoint_threshold_type) -> str:
@@ -90,10 +104,6 @@ def init_embeddings_models():
         model_kwargs={"device": embedding_device},
         encode_kwargs={"normalize_embeddings": True}
     )
-    # embeddings_models["infgrad/stella-large-zh-v3-1792d"] = HuggingFaceEmbeddings(
-    #     model_name="/root/huggingface/models/infgrad/stella-large-zh-v3-1792d",
-    #     model_kwargs=model_kwargs,
-    # )
     # embeddings_models["BAAI/bge-large-en-v1.5"] = HuggingFaceBgeEmbeddings(
     #     model_name="/root/huggingface/models/BAAI/bge-large-en-v1.5",
     #     model_kwargs=model_kwargs,
@@ -123,6 +133,10 @@ def on_submit(
 
     if not upload_file:
         return f"需要上传文件"
+    file_basename = os.path.basename(upload_file)
+    basename, ext = os.path.splitext(file_basename)
+    if ext != ".txt":
+        return f"仅支持 txt 文件"
     if splitter_radio != "RecursiveCharacterTextSplitter" and splitter_radio != "SemanticChunker" \
         and splitter_radio != "ChineseRecursiveTextSplitter":
         return f"无效文本分割器"
@@ -148,22 +162,28 @@ def on_splitter_radio_changed(choice):
 
 def init_blocks():
     with gr.Blocks() as app:
-        gr.Markdown("# 中/英 文本分割效果预览")
+        gr.Markdown("# embeddings 检索预览")
         with gr.Row():
             with gr.Column():
-                upload_file = gr.File(file_types=[".text"], label="需要拆分的文件")
+                upload_file = gr.File(file_types=[".text"], label="需要拆分的文件: txt")
 
                 splitter_radio = gr.Radio(label="文本分割器",
-                    choices=["RecursiveCharacterTextSplitter", "SemanticChunker", "ChineseRecursiveTextSplitter"],
-                    value="RecursiveCharacterTextSplitter")
+                    choices=[
+                        "RecursiveCharacterTextSplitter",
+                        "ChineseRecursiveTextSplitter"
+                    ],
+                    value="ChineseRecursiveTextSplitter")
                 embeddings_model = gr.Dropdown(label="embeddings_model",
-                        choices=["BAAI/bge-large-zh-v1.5", "Alibaba-NLP/gte-Qwen1.5-7B-instruct"],
-                        value="BAAI/bge-large-zh-v1.5")
+                    choices=[
+                        "BAAI/bge-large-zh-v1.5",
+                        "Alibaba-NLP/gte-Qwen1.5-7B-instruct",
+                    ],
+                    value="BAAI/bge-large-zh-v1.5")
                 with gr.Group() as recursive_character_params:
                     # recursive_character_params.visible = True
                     # chunk_size=1000, chunk_overlap=400, add_start_index=False
-                    chunk_size = gr.Number(value=1000, label="chunk_size")
-                    chunk_overlap = gr.Number(value=400, label="chunk_overlap")
+                    chunk_size = gr.Number(value=200, label="chunk_size")
+                    chunk_overlap = gr.Number(value=50, label="chunk_overlap")
                 with gr.Group() as semantic_params:
                     semantic_params.visible = False
                     # breakpoint_threshold_type ["percentile","standard_deviation","interquartile"]
