@@ -1,13 +1,17 @@
 import os,sys
 sys.path.append(os.getcwd())
 
+import re
 import gradio as gr
 from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings, HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders.text import TextLoader
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_demo.custom.text_splitter import ChineseRecursiveTextSplitter
+from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
+from langchain_demo.custom.document_loaders import RapidOCRPDFLoader, RapidOCRDocLoader
+from langchain_core.documents import Document
+
 
 embeddings_models = {}
 separators=[
@@ -27,11 +31,41 @@ separators=[
 DEFAULT_QUERY_BGE_INSTRUCTION_ZH = "为这个句子生成表示以用于检索相关文章："
 
 
+def init_documents(upload_file):
+    print(f"handle file: {upload_file}", flush=True)
+    file_basename = os.path.basename(upload_file)
+    basename, ext = os.path.splitext(file_basename)
+    # print(basename, ext)
+    if ext == '.pdf':
+        loader = RapidOCRPDFLoader(upload_file)
+        documents = loader.load()
+    elif ext in ['.doc', '.docx']:
+        loader = RapidOCRDocLoader(upload_file)
+        documents = loader.load()
+    elif ext == '.txt':
+        loader = UnstructuredFileLoader(upload_file, autodetect_encoding=True)
+        documents = loader.load()
+    else:
+        print(f"invalid upload file: {upload_file}", flush=True)
+        return f"仅支持 txt pdf doc docx"
+
+    doc_meta = None
+    doc_page_content = ""
+    for idx, doc in enumerate(documents):
+        if idx == 0:
+            doc_meta = doc.metadata
+        cleaned_page_content = re.sub(r'\s+', ' ', doc.page_content)
+        doc_page_content = f"{doc_page_content}\n{cleaned_page_content}"
+    documents = [Document(page_content=doc_page_content, metadata=doc_meta)]
+
+    return documents
+
+
 def handle_rec_text_splitter(
     file, model_name, query, chunk_size, chunk_overlap) -> str:
-    # print("[handle_rec_text_splitter]", file, model_name, query, chunk_size, chunk_overlap)
-    loader = TextLoader(file.name)
-    documents = loader.load()
+    documents = init_documents(file.name)
+    if isinstance(documents, str):
+        return documents
     rec_text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -58,8 +92,9 @@ def handle_rec_text_splitter(
 
 def handle_chinese_rec_text_splitter(
     file, model_name, query, chunk_size, chunk_overlap) -> str:
-    loader = TextLoader(file.name)
-    documents = loader.load()
+    documents = init_documents(file.name)
+    if isinstance(documents, str):
+        return documents
     rec_text_splitter = ChineseRecursiveTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -67,9 +102,9 @@ def handle_chinese_rec_text_splitter(
     docs = rec_text_splitter.split_documents(documents)
     print(f"[chinese_rec_text_splitter] [{model_name}] [chunks] {len(docs)}")
     vector_db = FAISS.from_documents(docs, embeddings_models[model_name])
-    resp_docs = vector_db.similarity_search(query, k=3)
-    # embedding_vectors = embeddings_models[model_name].embed_query(query)
-    # resp_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=1)
+    # resp_docs = vector_db.similarity_search(query, k=3)
+    embedding_vectors = embeddings_models[model_name].embed_query(query)
+    resp_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=3)
     # return resp_docs[0].page_content
 
     resp_content = ""
@@ -102,7 +137,7 @@ def init_embeddings_models():
     embeddings_models["BAAI/bge-large-zh-v1.5"] = HuggingFaceBgeEmbeddings(
         model_name="/root/huggingface/models/BAAI/bge-large-zh-v1.5",
         model_kwargs={"device": embedding_device},
-        encode_kwargs={"normalize_embeddings": True}
+        encode_kwargs={"normalize_embeddings": True},
     )
     # embeddings_models["BAAI/bge-large-en-v1.5"] = HuggingFaceBgeEmbeddings(
     #     model_name="/root/huggingface/models/BAAI/bge-large-en-v1.5",
@@ -113,10 +148,12 @@ def init_embeddings_models():
         model_name="/root/huggingface/models/Alibaba-NLP/gte-Qwen1.5-7B-instruct",
         model_kwargs={
             "device": embedding_device,
+            # "device": "cpu",
             "trust_remote_code": True,
         },
-        query_instruction=DEFAULT_QUERY_BGE_INSTRUCTION_ZH,
-        embed_instruction="",
+        # query_instruction=DEFAULT_QUERY_BGE_INSTRUCTION_ZH,
+        # embed_instruction="",
+        # encode_kwargs={"normalize_embeddings": True},
     )
 
     print("[init_embeddings_models]", embeddings_models.keys())
@@ -133,10 +170,6 @@ def on_submit(
 
     if not upload_file:
         return f"需要上传文件"
-    file_basename = os.path.basename(upload_file)
-    basename, ext = os.path.splitext(file_basename)
-    if ext != ".txt":
-        return f"仅支持 txt 文件"
     if splitter_radio != "RecursiveCharacterTextSplitter" and splitter_radio != "SemanticChunker" \
         and splitter_radio != "ChineseRecursiveTextSplitter":
         return f"无效文本分割器"
@@ -165,7 +198,7 @@ def init_blocks():
         gr.Markdown("# embeddings 检索预览")
         with gr.Row():
             with gr.Column():
-                upload_file = gr.File(file_types=[".text"], label="需要拆分的文件: txt")
+                upload_file = gr.File(file_types=[".text"], label="需要拆分的文件: [txt pdf doc docx]")
 
                 splitter_radio = gr.Radio(label="文本分割器",
                     choices=[
