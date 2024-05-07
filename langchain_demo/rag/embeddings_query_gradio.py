@@ -205,7 +205,6 @@ def init_blocks():
     return app
 
 
-# nohup python langchain/rag/text_splitter_gradio.py > logs.txt 2>&1 &
 if __name__ == '__main__':
     init_embeddings_models()
     app = init_blocks()
