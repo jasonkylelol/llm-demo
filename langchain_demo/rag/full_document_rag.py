@@ -1,31 +1,27 @@
 import sys, os, logging
-
 import gradio as gr
-import re
 
 from transformers import AutoTokenizer, AutoModel, AutoConfig
-from langchain_core.documents import Document
 from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
 from langchain_demo.custom.document_loaders import RapidOCRPDFLoader, RapidOCRDocLoader
-from langchain_demo.custom.text_splitter import ChineseRecursiveTextSplitter
 
-logging.basicConfig(level=logging.INFO, encoding="utf-8")
-logger = logging.getLogger()
+logging.basicConfig(
+    stream=sys.stdout, level=logging.INFO)
 
 device="cuda"
-
 model_path = "/root/huggingface/models"
-model_name = "THUDM/chatglm3-6b"
+model_name = "THUDM/chatglm3-6b-128k"
 model_full = f"{model_path}/{model_name}"
-
-embedding_model_name = "BAAI/bge-large-zh-v1.5"
-embedding_model_full = f"{model_path}/{embedding_model_name}"
+context_window=131072
 
 top_p=0.65
 temperature=0.1
 
+
 model, tokenizer = None, None
 document_dict = {}
+chat_file = ""
+
 
 def extract_new_token(str1, str2):
     prefix_len = 0
@@ -35,6 +31,7 @@ def extract_new_token(str1, str2):
     new_token = str2[prefix_len:]
 
     if new_token.startswith("<"):
+        # print("-", new_token)
         return str1, ""
     return str2, new_token
 
@@ -42,14 +39,14 @@ def extract_new_token(str1, str2):
 def handle_chat(chat_history, doc):
     if doc is None:
         err = f"必须选择一个文件"
-        logger.error(f"[handle_chat] err: {err}")
+        print(f"[handle_chat] err: {err}", flush=True)
         chat_history[-1][1] = err
         yield chat_history
         return
 
     if doc not in document_dict.keys():
         err = f"文件: {doc} 不存在"
-        logger.error(f"[handle_chat] err: {err}")
+        print(f"[handle_chat] err: {err}", flush=True)
         chat_history[-1][1] = err
         yield chat_history
         return
@@ -70,7 +67,7 @@ def handle_chat(chat_history, doc):
         }
     ]
     prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    logger.info(f"{prompt}\n\n")
+    print(f"{prompt}\n\n", flush=True)
 
     try:
         chat_history[-1][1] = ""
@@ -86,21 +83,21 @@ def handle_chat(chat_history, doc):
             yield chat_history
     except Exception as e:
         err = f"[handle_chat] exception: {e}"
-        logger.error(err)
+        print(f"{err}", flush=True)
         chat_history[-1][1] = err
         yield chat_history
         return
 
 
 def handle_add_msg(query, chat_history):
-    # logger.info(query, chat_history)
+    # print(query, chat_history)
     return gr.Textbox(value=None, interactive=False), chat_history + [[query, None]]
 
 
 def init_llm():
-    global model, tokenizer
-
-    logger.info(f"load from {model_full}")
+    global model
+    global tokenizer
+    print(f"load from {model_full}", flush=True)
     model_config = AutoConfig.from_pretrained(
         model_full,
         trust_remote_code=True
@@ -117,59 +114,33 @@ def init_llm():
         device_map=device).eval()
 
 
-def load_documents(upload_file: str):
+def handle_upload_file(upload_file):
+    global document_dict, chat_file
+
+    if not upload_file:
+        print("invalid upload_file", flush=True)
+        return gr.Markdown("invalid upload file")
+    
+    print(f"handle file: {upload_file}", flush=True)
     file_basename = os.path.basename(upload_file)
     basename, ext = os.path.splitext(file_basename)
+    # print(basename, ext)
     if ext == '.pdf':
         loader = RapidOCRPDFLoader(upload_file)
         documents = loader.load()
+        document_dict[file_basename] = documents
     elif ext in ['.doc', '.docx']:
         loader = RapidOCRDocLoader(upload_file)
         documents = loader.load()
+        document_dict[file_basename] = documents
     elif ext == '.txt':
         loader = UnstructuredFileLoader(upload_file, autodetect_encoding=True)
         documents = loader.load()
+        document_dict[file_basename] = documents
     else:
-        return "仅支持 txt pdf doc docx"
-    doc_meta = None
-    doc_page_content = ""
-    for idx, doc in enumerate(documents):
-        if idx == 0:
-            doc_meta = doc.metadata
-        cleaned_page_content = re.sub(r'\s+', ' ', doc.page_content)
-        doc_page_content = f"{doc_page_content}\n{cleaned_page_content}"
-    documents = [Document(page_content=doc_page_content, metadata=doc_meta)]
-    return documents
-
-
-def split_documents(documents: list, chunk_size, chunk_overlap: int):
-    text_splitter = ChineseRecursiveTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-    )
-    docs = text_splitter.split_documents(documents)
-    return docs
-
-
-def handle_upload_file(upload_file: str, chunk_size: int, chunk_overlap: int):
-    global document_dict
-
-    if not upload_file:
-        logger.error("invalid upload_file")
-        return gr.Markdown("invalid upload file")
-
-    logger.info(f"handle file: {upload_file}")
-    file_basename = os.path.basename(upload_file)
-
-    documents = load_documents(upload_file)
-    if isinstance(documents, str):
-        logger.error(documents)
-        return gr.Markdown(documents)
-    
-    documents = split_documents(documents, chunk_size, chunk_overlap)
-    
-    document_dict[file_basename] = documents
-    logger.info(f"init document: {file_basename} succeed")
+        print(f"invalid upload file: {upload_file}", flush=True)
+        return gr.Markdown(f"file: {file_basename} not support")
+    print(f"init document: {file_basename} succeed", flush=True)
 
 
 def doc_loaded():
@@ -179,15 +150,14 @@ def doc_loaded():
 def init_blocks():
     with gr.Blocks() as app:
         gr.Markdown("# RAG\n"
-            f"llm: {model_name}  \n"
-            f"embeddings: {embedding_model_name}  \n"
+            "将整个文件内容作为问题的上下文信息  \n"
+            f"{model_name}  \n"
+            f"context-window: {context_window}  \n"
             f"支持 txt, pdf, doc, docx")
         with gr.Row():
             with gr.Column(scale=1):
                 upload_file = gr.File(file_types=[".text"], label="对话文件")
                 upload_status = gr.Markdown()
-                chunk_size = gr.Number(value=300, minimum=100, maximum=1000, label="chunk_size")
-                chunk_overlap = gr.Number(value=50, minimum=10, maximum=1000,label="chunk_overlap")
                 docs = doc_loaded()
             with gr.Column(scale=4):
                 chatbot = gr.Chatbot(label="chatroom", show_label=False)
@@ -197,13 +167,11 @@ def init_blocks():
                     with gr.Column(scale=1):
                         clear = gr.ClearButton(value="清空聊天记录", components=[query, chatbot],
                             size="sm", scale=1, variant="primary")
-
         query.submit(
             handle_add_msg, [query, chatbot], [query, chatbot]).then(
             handle_chat, inputs=[chatbot, docs], outputs=chatbot).then(
             lambda: gr.Textbox(interactive=True), outputs=[query])
-        upload_file.upload(handle_upload_file,
-            inputs=[upload_file, chunk_size, chunk_overlap], outputs=upload_status).then(
+        upload_file.upload(handle_upload_file, inputs=upload_file, outputs=upload_status).then(
             doc_loaded, outputs=docs)
         app.load(doc_loaded, outputs=docs)
 
