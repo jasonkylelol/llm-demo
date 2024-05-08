@@ -144,16 +144,20 @@ def init_embeddings_models():
     #     model_kwargs=model_kwargs,
     #     encode_kwargs={"normalize_embeddings": True}
     # )
-    embeddings_models["Alibaba-NLP/gte-Qwen1.5-7B-instruct"] = HuggingFaceBgeEmbeddings(
-        model_name="/root/huggingface/models/Alibaba-NLP/gte-Qwen1.5-7B-instruct",
-        model_kwargs={
-            "device": embedding_device,
-            # "device": "cpu",
-            "trust_remote_code": True,
-        },
-        # query_instruction=DEFAULT_QUERY_BGE_INSTRUCTION_ZH,
-        # embed_instruction="",
-        # encode_kwargs={"normalize_embeddings": True},
+    # embeddings_models["Alibaba-NLP/gte-Qwen1.5-7B-instruct"] = HuggingFaceBgeEmbeddings(
+    #     model_name="/root/huggingface/models/Alibaba-NLP/gte-Qwen1.5-7B-instruct",
+    #     model_kwargs={
+    #         "device": embedding_device,
+    #         "trust_remote_code": True,
+    #     },
+    #     # query_instruction=DEFAULT_QUERY_BGE_INSTRUCTION_ZH,
+    #     # embed_instruction="",
+    #     # encode_kwargs={"normalize_embeddings": True},
+    # )
+    embeddings_models["maidalun1020/bce-embedding-base_v1"] = HuggingFaceEmbeddings(
+        model_name="/root/huggingface/models/maidalun1020/bce-embedding-base_v1",
+        model_kwargs={"device": embedding_device},
+        encode_kwargs={'batch_size': 32, 'normalize_embeddings': True},
     )
 
     print("[init_embeddings_models]", embeddings_models.keys())
@@ -199,7 +203,6 @@ def init_blocks():
         with gr.Row():
             with gr.Column():
                 upload_file = gr.File(file_types=[".text"], label="需要拆分的文件: [txt pdf doc docx]")
-
                 splitter_radio = gr.Radio(label="文本分割器",
                     choices=[
                         "RecursiveCharacterTextSplitter",
@@ -207,15 +210,12 @@ def init_blocks():
                     ],
                     value="ChineseRecursiveTextSplitter")
                 embeddings_model = gr.Dropdown(label="embeddings_model",
-                    choices=[
-                        "BAAI/bge-large-zh-v1.5",
-                        "Alibaba-NLP/gte-Qwen1.5-7B-instruct",
-                    ],
+                    choices=embeddings_models.keys(),
                     value="BAAI/bge-large-zh-v1.5")
                 with gr.Group() as recursive_character_params:
                     # recursive_character_params.visible = True
                     # chunk_size=1000, chunk_overlap=400, add_start_index=False
-                    chunk_size = gr.Number(value=200, label="chunk_size")
+                    chunk_size = gr.Number(value=300, label="chunk_size")
                     chunk_overlap = gr.Number(value=50, label="chunk_overlap")
                 with gr.Group() as semantic_params:
                     semantic_params.visible = False
