@@ -1,16 +1,23 @@
 import sys, os, logging
+import re
+from typing import Tuple, List
 
 import gradio as gr
-import re
-
 from transformers import AutoTokenizer, AutoModel, AutoConfig
 from langchain_core.documents import Document
 from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
+from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings
+from langchain_community.vectorstores.faiss import FAISS
 from langchain_demo.custom.document_loaders import RapidOCRPDFLoader, RapidOCRDocLoader
 from langchain_demo.custom.text_splitter import ChineseRecursiveTextSplitter
 
 logging.basicConfig(level=logging.INFO, encoding="utf-8")
 logger = logging.getLogger()
+formatter = logging.Formatter(
+    fmt="%(asctime)s | %(levelname)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger.handlers[0].setFormatter(formatter)
 
 device="cuda"
 
@@ -25,71 +32,63 @@ top_p=0.65
 temperature=0.1
 
 model, tokenizer = None, None
-document_dict = {}
+embedding_model = None
+vector_db_dict = {}
 
-def extract_new_token(str1, str2):
-    prefix_len = 0
-    min_len = min(len(str1), len(str2))
-    while prefix_len < min_len and str1[prefix_len] == str2[prefix_len]:
-        prefix_len += 1
-    new_token = str2[prefix_len:]
 
-    if new_token.startswith("<"):
-        return str1, ""
-    return str2, new_token
+def generate_kb_prompt(chat_history, doc) -> Tuple[str, List]:
+    query = chat_history[-1][0]
+    vector_db = vector_db_dict.get(doc)
+
+    # searched_docs = vector_db.similarity_search(query, k=3)
+    embedding_vectors = embedding_model.embed_query(query)
+    searched_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=3)
+
+    knowledge = ""
+    for idx, document in enumerate(searched_docs):
+        knowledge = f"{knowledge}\n{document.page_content}"
+
+    kb_query = ("根据以下背景知识回答问题，回答中不要出现（根据上文，根据背景知识，根据文档）等文案，"
+        "如果问题与背景知识不相关，或无法从中得到答案，请说“根据已知信息无法回答该问题”，不允许在答案中添加编造成分，答案请使用中文。\n"
+        f"背景知识: \n{knowledge}\n\n问题: {query}")
+    return kb_query, []
+
+
+def generate_prompt(chat_history) -> Tuple[str, List]:
+    history = chat_history[:-1]
+    query = chat_history[-1][0]
+    model_history = []
+    for hist in history:
+        user_msg = hist[0]
+        model_history.append({"role":"user","content":user_msg})
+        assistant_msg = hist[1]
+        model_history.append({"role":"assistant","content":assistant_msg})
+    return query, model_history
+
+
+def chat_resp(chat_history, msg):
+    chat_history[-1][1] = msg
+    return chat_history
 
 
 def handle_chat(chat_history, doc):
-    if doc is None:
-        err = f"必须选择一个文件"
-        logger.error(f"[handle_chat] err: {err}")
-        chat_history[-1][1] = err
-        yield chat_history
-        return
-
-    if doc not in document_dict.keys():
+    if doc is not None and doc not in vector_db_dict.keys():
         err = f"文件: {doc} 不存在"
         logger.error(f"[handle_chat] err: {err}")
-        chat_history[-1][1] = err
-        yield chat_history
+        yield chat_resp(chat_history, err)
         return
 
-    last_resp = ""
-    query = chat_history[-1][0]
-    knowledge = ""
-    documents = document_dict.get(doc)
-    for document in documents:
-        knowledge = f"{knowledge}\n{document.page_content}"
-    content = ("根据以下背景知识回答问题，回答中不要出现（根据上文，根据背景知识，根据 XX 文档）等文案，"
-        "如果问题与背景知识不相关，或无法从中得到答案，请说“根据已知信息无法回答该问题”，不允许在答案中添加编造成分，答案请使用中文。\n"
-        f"背景知识: \n{knowledge}\n问题: {query}")
-    messages = [
-        {
-            "role": "user",
-            "content": content,
-        }
-    ]
-    prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    logger.info(f"{prompt}\n\n")
-
-    try:
-        chat_history[-1][1] = ""
-        # top_p=top_p,
-        for resp, history in model.stream_chat(tokenizer, prompt,
-            do_sample=True, temperature=temperature):
-            if resp == "":
-                continue
-            last_resp, new_token = extract_new_token(last_resp, resp)
-            if new_token == "":
-                continue
-            chat_history[-1][1] += new_token
-            yield chat_history
-    except Exception as e:
-        err = f"[handle_chat] exception: {e}"
-        logger.error(err)
-        chat_history[-1][1] = err
-        yield chat_history
+    if doc is None:
+        # query, history = generate_prompt(chat_history)
+        yield chat_resp(chat_history, "需要选择文件")
         return
+    else:
+        query, history = generate_kb_prompt(chat_history, doc)
+    logger.info(f"{query}\n{history}\n")
+
+    for resp, model_history in model.stream_chat(tokenizer, query=query, history=history,
+        do_sample=True, temperature=temperature):
+        yield chat_resp(chat_history, resp)
 
 
 def handle_add_msg(query, chat_history):
@@ -114,7 +113,19 @@ def init_llm():
         model_full,
         config=model_config,
         trust_remote_code=True,
-        device_map=device).eval()
+        device_map=device)
+    model = model.eval()
+
+
+def init_embeddings():
+    global embedding_model
+
+    logger.info(f"load from {embedding_model_full}")
+    embedding_model = HuggingFaceBgeEmbeddings(
+        model_name=embedding_model_full,
+        model_kwargs={"device": device},
+        encode_kwargs={"normalize_embeddings": True},
+    )
 
 
 def load_documents(upload_file: str):
@@ -152,7 +163,7 @@ def split_documents(documents: list, chunk_size, chunk_overlap: int):
 
 
 def handle_upload_file(upload_file: str, chunk_size: int, chunk_overlap: int):
-    global document_dict
+    global vector_db_dict
 
     if not upload_file:
         logger.error("invalid upload_file")
@@ -165,31 +176,33 @@ def handle_upload_file(upload_file: str, chunk_size: int, chunk_overlap: int):
     if isinstance(documents, str):
         logger.error(documents)
         return gr.Markdown(documents)
-    
+
     documents = split_documents(documents, chunk_size, chunk_overlap)
-    
-    document_dict[file_basename] = documents
-    logger.info(f"init document: {file_basename} succeed")
+
+    vector_db = FAISS.from_documents(documents, embedding_model)
+    vector_db_dict[file_basename] = vector_db
+
+    logger.info(f"[chinese_rec_text_splitter] [{file_basename}] [chunks] {len(documents)}")
 
 
 def doc_loaded():
-    return gr.Radio(choices=document_dict.keys(), label="可供选择的文件:")
+    return gr.Radio(choices=vector_db_dict.keys(), label="可供选择的文件:")
 
 
 def init_blocks():
     with gr.Blocks() as app:
-        gr.Markdown("# RAG\n"
-            f"llm: {model_name}  \n"
-            f"embeddings: {embedding_model_name}  \n"
-            f"支持 txt, pdf, doc, docx")
+        gr.Markdown("# RAG")
         with gr.Row():
             with gr.Column(scale=1):
+                gr.Markdown(f"llm: {model_name}  \n"
+                    f"embeddings: {embedding_model_name}  \n"
+                    f"支持 txt, pdf, doc, docx")
                 upload_file = gr.File(file_types=[".text"], label="对话文件")
                 upload_status = gr.Markdown()
                 chunk_size = gr.Number(value=300, minimum=100, maximum=1000, label="chunk_size")
                 chunk_overlap = gr.Number(value=50, minimum=10, maximum=1000,label="chunk_overlap")
-                docs = doc_loaded()
             with gr.Column(scale=4):
+                docs = doc_loaded()
                 chatbot = gr.Chatbot(label="chatroom", show_label=False)
                 with gr.Row(equal_height=True):
                     with gr.Column(scale=5):
@@ -199,11 +212,11 @@ def init_blocks():
                             size="sm", scale=1, variant="primary")
 
         query.submit(
-            handle_add_msg, [query, chatbot], [query, chatbot]).then(
+            handle_add_msg, inputs=[query, chatbot], outputs=[query, chatbot]).then(
             handle_chat, inputs=[chatbot, docs], outputs=chatbot).then(
             lambda: gr.Textbox(interactive=True), outputs=[query])
-        upload_file.upload(handle_upload_file,
-            inputs=[upload_file, chunk_size, chunk_overlap], outputs=upload_status).then(
+        upload_file.upload(
+            handle_upload_file, inputs=[upload_file, chunk_size, chunk_overlap], outputs=upload_status).then(
             doc_loaded, outputs=docs)
         app.load(doc_loaded, outputs=docs)
 
@@ -213,6 +226,7 @@ def init_blocks():
 # nohup langchain_demo/rag/svc_start.sh > logs.txt 2>&1 &
 if __name__ == "__main__":
     init_llm()
+    init_embeddings()
 
     app = init_blocks()
     app.queue(max_size=10).launch(server_name='0.0.0.0', server_port=8060, show_api=False, share=False)

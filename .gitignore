@@ -6,3 +6,4 @@ cache
 *.docx
 nohup.out
 hf_llm_download
+langchain_demo/rag/svc_start.sh
