@@ -213,6 +213,20 @@ def load_documents(upload_file: str):
 
 
 def split_documents(documents: list, chunk_size, chunk_overlap: int):
+    if chunk_size >= 300:
+        full_docs = []
+        all_chunk_size = [chunk_size-100, chunk_size, chunk_size+100]
+        for auto_chunk_size in all_chunk_size:
+            auto_chunk_overlap = auto_chunk_size / 4
+            logger.info(f"[split_documents] auto_chunk_size:{auto_chunk_size} auto_chunk_overlap:{auto_chunk_overlap}")
+            text_splitter = ChineseRecursiveTextSplitter(
+                chunk_size=auto_chunk_size,
+                chunk_overlap=auto_chunk_overlap,
+            )
+            docs = text_splitter.split_documents(documents)
+            full_docs.extend(docs)
+        return full_docs
+
     text_splitter = ChineseRecursiveTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
