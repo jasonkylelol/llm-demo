@@ -7,7 +7,7 @@ import gradio as gr
 from transformers import AutoTokenizer, AutoModel, AutoConfig, AutoModelForSequenceClassification
 from langchain_core.documents import Document
 from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
-from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings
+from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings, HuggingFaceEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_demo.custom.document_loaders import RapidOCRPDFLoader, RapidOCRDocLoader
 from langchain_demo.custom.text_splitter import ChineseRecursiveTextSplitter
@@ -26,10 +26,12 @@ model_path = "/root/huggingface/models"
 model_name = "THUDM/chatglm3-6b"
 model_full = f"{model_path}/{model_name}"
 
-embedding_model_name = "BAAI/bge-large-zh-v1.5"
+# embedding_model_name = "BAAI/bge-large-zh-v1.5"
+embedding_model_name = "maidalun1020/bce-embedding-base_v1"
 embedding_model_full = f"{model_path}/{embedding_model_name}"
 
-rerank_model_name = "BAAI/bge-reranker-large"
+# rerank_model_name = "BAAI/bge-reranker-large"
+rerank_model_name = "maidalun1020/bce-reranker-base_v1"
 rerank_model_full = f"{model_path}/{rerank_model_name}"
 
 top_p=0.65
@@ -77,9 +79,11 @@ def rerank_documents(query, docs, rerank_top_k):
     rerank_docs = []
     with torch.no_grad():
         inputs = rerank_tokenizer(pairs, padding=True, truncation=True, return_tensors='pt', max_length=512).to(device)
-        scores = rerank_model(**inputs, return_dict=True).logits.view(-1, ).float().tolist()
-        # print(scores)
-
+        scores = rerank_model(**inputs, return_dict=True).logits.view(-1, ).float()
+        scores = torch.sigmoid(scores)
+        scores = scores.tolist()
+    
+    print(f"scores: {scores}")
     combined_list = list(zip(docs, scores))
     sorted_combined_list = sorted(combined_list, key=lambda x: x[1], reverse=True)
     for idx, item in enumerate(sorted_combined_list):
@@ -167,10 +171,10 @@ def init_embeddings():
     global embedding_model
 
     logger.info(f"load from {embedding_model_full}")
-    embedding_model = HuggingFaceBgeEmbeddings(
+    embedding_model = HuggingFaceEmbeddings(
         model_name=embedding_model_full,
         model_kwargs={"device": device},
-        encode_kwargs={"normalize_embeddings": True},
+        encode_kwargs={'batch_size': 32, 'normalize_embeddings': True},
     )
 
 
@@ -213,7 +217,7 @@ def load_documents(upload_file: str):
 
 
 def split_documents(documents: list, chunk_size, chunk_overlap: int):
-    if chunk_size >= 300:
+    if chunk_size > 300:
         full_docs = []
         all_chunk_size = [chunk_size-100, chunk_size, chunk_size+100]
         for auto_chunk_size in all_chunk_size:
