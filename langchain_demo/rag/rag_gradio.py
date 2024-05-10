@@ -35,7 +35,7 @@ rerank_model_name = "maidalun1020/bce-reranker-base_v1"
 rerank_model_full = f"{model_path}/{rerank_model_name}"
 
 top_p=0.65
-temperature=0.1
+# temperature=0.1
 
 model, tokenizer = None, None
 embedding_model = None
@@ -52,14 +52,19 @@ def generate_kb_prompt(chat_history, kb_file, embedding_top_k, rerank_top_k) -> 
 
     rerank_docs = rerank_documents(query, searched_docs, rerank_top_k)
 
+    print(f"query: {query}")
     knowledge = ""
     for idx, document in enumerate(rerank_docs):
+        print(f"{document.page_content}\n")
         knowledge = f"{knowledge}\n\n{document.page_content}"
     knowledge = knowledge.strip()
 
-    kb_query = ("根据以下背景知识回答问题，回答中不要出现（根据上文，根据背景知识，根据文档）等文案，"
-        "如果问题与背景知识不相关，或无法从中得到答案，请说“根据已知信息无法回答该问题”，不允许在答案中添加编造成分，答案请使用中文。\n"
-        f"背景知识: \n\n{knowledge}\n\n问题: {query}")
+    kb_query = ("<指令>根据已知信息，简洁和专业的来回答问题。如果无法从中得到答案，"
+        "请说 “根据已知信息无法回答该问题”，不允许在答案中添加编造成分，答案请使用中文。</指令>\n"
+        f"<已知信息>{knowledge}</已知信息>\n<问题>{query}</问题>")
+    # kb_query = ("根据以下背景知识回答问题，回答中不要出现（根据上文，根据背景知识，根据文档）等文案，"
+    #     "如果问题与背景知识不相关，或无法从中得到答案，请说“根据已知信息无法回答该问题”，不允许在答案中添加编造成分，答案请使用中文。\n"
+    #     f"背景知识: \n\n{knowledge}\n\n问题: {query}")
     return kb_query, rerank_docs, []
 
 
@@ -83,7 +88,7 @@ def rerank_documents(query, docs, rerank_top_k):
         scores = torch.sigmoid(scores)
         scores = scores.tolist()
     
-    print(f"scores: {scores}")
+    # print(f"scores: {scores}")
     combined_list = list(zip(docs, scores))
     sorted_combined_list = sorted(combined_list, key=lambda x: x[1], reverse=True)
     for idx, item in enumerate(sorted_combined_list):
@@ -91,11 +96,6 @@ def rerank_documents(query, docs, rerank_top_k):
             break
         document = item[0]
         rerank_docs.append(document)
-
-    print(f"query: {query}")
-    for idx, document in enumerate(rerank_docs):
-        print(f"{document.page_content}\n")
-
     return rerank_docs
 
 
@@ -119,13 +119,13 @@ def chat_resp(chat_history, msg, searched_docs=[]):
     return chat_history, knowledge.strip()
 
 
-def handle_chat(chat_history, kb_file, embedding_top_k, rerank_top_k):
+def handle_chat(chat_history, kb_file, temperature, embedding_top_k, rerank_top_k):
     if kb_file is not None and kb_file not in vector_db_dict.keys():
         err = f"文件: {kb_file} 不存在"
         logger.error(f"[handle_chat] err: {err}")
         yield chat_resp(chat_history, err)
         return
-    logger.info(f"embedding_top_k: {embedding_top_k} rerank_top_k: {rerank_top_k}")
+    logger.info(f"temperature: {temperature} embedding_top_k: {embedding_top_k} rerank_top_k: {rerank_top_k}")
     if kb_file is None:
         # query, history = generate_prompt(chat_history)
         yield chat_resp(chat_history, "需要选择文件")
@@ -221,7 +221,7 @@ def split_documents(documents: list, chunk_size, chunk_overlap: int):
         full_docs = []
         all_chunk_size = [chunk_size-100, chunk_size, chunk_size+100]
         for auto_chunk_size in all_chunk_size:
-            auto_chunk_overlap = auto_chunk_size / 4
+            auto_chunk_overlap = int(auto_chunk_size / 4)
             logger.info(f"[split_documents] auto_chunk_size:{auto_chunk_size} auto_chunk_overlap:{auto_chunk_overlap}")
             text_splitter = ChineseRecursiveTextSplitter(
                 chunk_size=auto_chunk_size,
@@ -249,7 +249,7 @@ def human_readable_size(file_path):
     return '{:.2f} {}'.format(size_bytes, size_names[i-1])
 
 
-def handle_upload_file(upload_file: str, chunk_size: int, chunk_overlap: int):
+def handle_upload_file(upload_file: str, chunk_size: int):
     global vector_db_dict, uploading_files
 
     if not upload_file:
@@ -267,6 +267,7 @@ def handle_upload_file(upload_file: str, chunk_size: int, chunk_overlap: int):
         return
 
     uploading_files[file_basename] = "正在拆分文件..."
+    chunk_overlap = int(chunk_size / 4)
     documents = split_documents(documents, chunk_size, chunk_overlap)
     logger.info(f"file: {file_basename} split to {len(documents)} chunks")
 
@@ -316,7 +317,8 @@ def init_blocks():
                 upload_stat = gr.Markdown(value=uploading_status, every=0.5)
                 with gr.Row():
                     chunk_size = gr.Number(value=200, minimum=100, maximum=1000, label="chunk_size")
-                    chunk_overlap = gr.Number(value=50, minimum=10, maximum=500, label="chunk_overlap")
+                    # chunk_overlap = gr.Number(value=50, minimum=10, maximum=500, label="chunk_overlap")
+                    temperature = gr.Number(value=0.1, minimum=0.01, maximum=0.99, label="temperature")
                 with gr.Row():
                     embedding_top_k = gr.Number(value=10, minimum=5, maximum=100, label="embedding_top_k")
                     rerank_top_k = gr.Number(value=3, minimum=1, maximum=5, label="rerank_top_k")
@@ -329,10 +331,10 @@ def init_blocks():
                     clear = gr.ClearButton(value="清空聊天记录", components=[query, chatbot, searched_docs], scale=1)
         query.submit(
             handle_add_msg, inputs=[query, chatbot], outputs=[query, chatbot]).then(
-            handle_chat, inputs=[chatbot, query_doc, embedding_top_k, rerank_top_k], outputs=[chatbot, searched_docs]).then(
+            handle_chat, inputs=[chatbot, query_doc, temperature, embedding_top_k, rerank_top_k], outputs=[chatbot, searched_docs]).then(
             lambda: gr.Textbox(interactive=True), outputs=[query])
         upload_file.upload(
-            handle_upload_file, inputs=[upload_file, chunk_size, chunk_overlap], show_progress="full").then(
+            handle_upload_file, inputs=[upload_file, chunk_size], show_progress="full").then(
             doc_loaded, outputs=query_doc)
         app.load(doc_loaded, outputs=query_doc)
 
