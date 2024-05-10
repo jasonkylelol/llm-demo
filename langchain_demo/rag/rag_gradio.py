@@ -1,10 +1,13 @@
 import sys, os, logging
 import re
 from typing import Tuple, List
+from threading import Thread
 
 import torch
 import gradio as gr
-from transformers import AutoTokenizer, AutoModel, AutoConfig, AutoModelForSequenceClassification
+from transformers import (
+    AutoTokenizer, AutoModel, AutoConfig, AutoModelForSequenceClassification,
+    AutoModelForCausalLM, TextIteratorStreamer)
 from langchain_core.documents import Document
 from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
 from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings, HuggingFaceEmbeddings
@@ -23,7 +26,8 @@ logger.handlers[0].setFormatter(formatter)
 device="cuda"
 
 model_path = "/root/huggingface/models"
-model_name = "THUDM/chatglm3-6b"
+# model_name = "THUDM/chatglm3-6b"
+model_name = "OpenBuddy/openbuddy-llama3-8b-v21.1-8k"
 model_full = f"{model_path}/{model_name}"
 
 # embedding_model_name = "BAAI/bge-large-zh-v1.5"
@@ -34,6 +38,7 @@ embedding_model_full = f"{model_path}/{embedding_model_name}"
 rerank_model_name = "maidalun1020/bce-reranker-base_v1"
 rerank_model_full = f"{model_path}/{rerank_model_name}"
 
+max_new_tokens=8192
 top_p=0.65
 # temperature=0.1
 
@@ -52,10 +57,10 @@ def generate_kb_prompt(chat_history, kb_file, embedding_top_k, rerank_top_k) -> 
 
     rerank_docs = rerank_documents(query, searched_docs, rerank_top_k)
 
-    print(f"query: {query}")
+    print(f"query: {query}", flush=True)
     knowledge = ""
     for idx, document in enumerate(rerank_docs):
-        print(f"{document.page_content}\n")
+        print(f"{document.page_content}\n", flush=True)
         knowledge = f"{knowledge}\n\n{document.page_content}"
     knowledge = knowledge.strip()
 
@@ -102,12 +107,15 @@ def rerank_documents(query, docs, rerank_top_k):
 def generate_prompt(chat_history) -> Tuple[str, List]:
     history = chat_history[:-1]
     query = chat_history[-1][0]
+
     model_history = []
     for hist in history:
         user_msg = hist[0]
         model_history.append({"role":"user","content":user_msg})
         assistant_msg = hist[1]
         model_history.append({"role":"assistant","content":assistant_msg})
+        print(f"user: {user_msg}\nassistant: {assistant_msg}", flush=True)
+    print(f"query: {query}", flush=True)
     return query, model_history
 
 
@@ -119,26 +127,65 @@ def chat_resp(chat_history, msg, searched_docs=[]):
     return chat_history, knowledge.strip()
 
 
+def stream_print(s):
+    sys.stdout.write(s)
+    sys.stdout.flush()
+
+
 def handle_chat(chat_history, kb_file, temperature, embedding_top_k, rerank_top_k):
     if kb_file is not None and kb_file not in vector_db_dict.keys():
         err = f"文件: {kb_file} 不存在"
         logger.error(f"[handle_chat] err: {err}")
         yield chat_resp(chat_history, err)
         return
+
     logger.info(f"temperature: {temperature} embedding_top_k: {embedding_top_k} rerank_top_k: {rerank_top_k}")
     if kb_file is None:
-        # query, history = generate_prompt(chat_history)
-        yield chat_resp(chat_history, "需要选择文件")
-        return
+        query, history = generate_prompt(chat_history)
+        searched_docs = []
+        # yield chat_resp(chat_history, "需要选择文件")
+        # return
     else:
         query, searched_docs, history = generate_kb_prompt(chat_history, kb_file, embedding_top_k, rerank_top_k)
-    # logger.info(query)
-    # if len(history) > 0:
-    #     logger.info(history)
 
-    for resp, model_history in model.stream_chat(tokenizer, query=query, history=history,
-        do_sample=True, temperature=temperature):
-        yield chat_resp(chat_history, resp, searched_docs)
+    if "chatglm3" in model_name:
+        for resp, model_history in model.stream_chat(tokenizer, query=query, history=history,
+            do_sample=True, temperature=temperature):
+            yield chat_resp(chat_history, resp, searched_docs)
+    else:
+        streamer, thread = llama_stream_chat(query, history, temperature)
+        generated_text = ""
+        for new_text in streamer:
+            # stream_print(new_text)
+            generated_text += new_text
+            yield chat_resp(chat_history, generated_text, searched_docs)
+        thread.join()
+
+
+def llama_stream_chat(query, history, temperature):
+    messages = []
+    if len(history) > 0:
+        messages.extend(history)
+    messages.append({"role":"user","content":query})
+    # prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+    # print(f"{prompt}\n\n")
+    input_ids = tokenizer.apply_chat_template(
+        messages, add_generation_prompt=True, return_tensors="pt").to(model.device)
+    streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
+    terminators = [tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<|eot_id|>")]
+    generation_kwargs = dict(
+        inputs=input_ids,
+        streamer=streamer,
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        temperature=temperature,
+        top_p=top_p,
+        eos_token_id=terminators,
+        pad_token_id=tokenizer.eos_token_id,
+    )
+    thread = Thread(target=model.generate, kwargs=generation_kwargs)
+    thread.start()
+    return streamer, thread
 
 
 def handle_add_msg(query, chat_history):
@@ -150,21 +197,16 @@ def init_llm():
     global model, tokenizer
 
     logger.info(f"load from {model_full}")
-    model_config = AutoConfig.from_pretrained(
-        model_full,
-        trust_remote_code=True
-    )
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_full,
-        device_map=device,
-        trust_remote_code=True
-    )
-    model = AutoModel.from_pretrained(
-        model_full,
-        config=model_config,
-        trust_remote_code=True,
-        device_map=device)
-    model = model.eval()
+    if "chatglm3" in model_name:
+        model_config = AutoConfig.from_pretrained(model_full, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(model_full, device_map=device, trust_remote_code=True)
+        model = AutoModel.from_pretrained(model_full, config=model_config, trust_remote_code=True, device_map=device)
+        model = model.eval()
+    else:
+        model_config = AutoConfig.from_pretrained(model_full)
+        tokenizer = AutoTokenizer.from_pretrained(model_full, device_map=device)
+        model = AutoModelForCausalLM.from_pretrained(model_full, config=model_config,
+            torch_dtype=torch.bfloat16, device_map=device)
 
 
 def init_embeddings():
@@ -316,12 +358,12 @@ def init_blocks():
                 upload_file = gr.UploadButton("对话文件上传", variant="primary")
                 upload_stat = gr.Markdown(value=uploading_status, every=0.5)
                 with gr.Row():
-                    chunk_size = gr.Number(value=200, minimum=100, maximum=1000, label="chunk_size")
+                    chunk_size = gr.Number(value=300, minimum=100, maximum=1000, label="chunk_size")
                     # chunk_overlap = gr.Number(value=50, minimum=10, maximum=500, label="chunk_overlap")
                     temperature = gr.Number(value=0.1, minimum=0.01, maximum=0.99, label="temperature")
                 with gr.Row():
-                    embedding_top_k = gr.Number(value=10, minimum=5, maximum=100, label="embedding_top_k")
-                    rerank_top_k = gr.Number(value=3, minimum=1, maximum=5, label="rerank_top_k")
+                    embedding_top_k = gr.Number(value=15, minimum=5, maximum=100, label="embedding_top_k")
+                    rerank_top_k = gr.Number(value=5, minimum=1, maximum=5, label="rerank_top_k")
                 searched_docs = gr.Textbox(label="检索到的文本", lines=10)
             with gr.Column(scale=5):
                 query_doc = doc_loaded()
