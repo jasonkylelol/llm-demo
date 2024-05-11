@@ -26,8 +26,8 @@ logger.handlers[0].setFormatter(formatter)
 device="cuda"
 
 model_path = "/root/huggingface/models"
-# model_name = "THUDM/chatglm3-6b"
-model_name = "OpenBuddy/openbuddy-llama3-8b-v21.1-8k"
+model_name = "THUDM/chatglm3-6b"
+# model_name = "shenzhi-wang/Llama3-8B-Chinese-Chat"
 model_full = f"{model_path}/{model_name}"
 
 # embedding_model_name = "BAAI/bge-large-zh-v1.5"
@@ -39,7 +39,7 @@ rerank_model_name = "maidalun1020/bce-reranker-base_v1"
 rerank_model_full = f"{model_path}/{rerank_model_name}"
 
 max_new_tokens=8192
-top_p=0.65
+# top_p=0.1
 # temperature=0.1
 
 model, tokenizer = None, None
@@ -179,7 +179,7 @@ def llama_stream_chat(query, history, temperature):
         max_new_tokens=max_new_tokens,
         do_sample=True,
         temperature=temperature,
-        top_p=top_p,
+        # top_p=top_p,
         eos_token_id=terminators,
         pad_token_id=tokenizer.eos_token_id,
     )
@@ -216,7 +216,8 @@ def init_embeddings():
     embedding_model = HuggingFaceEmbeddings(
         model_name=embedding_model_full,
         model_kwargs={"device": device},
-        encode_kwargs={'batch_size': 32, 'normalize_embeddings': True},
+        # encode_kwargs={'batch_size': 32, 'normalize_embeddings': True},
+        encode_kwargs={'normalize_embeddings': True},
     )
 
 
