@@ -1,10 +1,14 @@
 from typing import List
-from langchain.document_loaders.unstructured import UnstructuredFileLoader
+import json
 import cv2
 from PIL import Image
 import numpy as np
-from langchain_demo.custom.document_loaders.ocr import get_ocr
 import tqdm
+import fitz # pyMuPDF里面的fitz包，不要与pip install fitz混淆
+
+from pprint import pprint
+from langchain.document_loaders.unstructured import UnstructuredFileLoader
+from langchain_demo.custom.document_loaders.ocr import get_ocr
 
 # PDF OCR 控制：只对宽高超过页面一定比例（图片宽/页面宽，图片高/页面高）的图片进行 OCR。
 # 这样可以避免 PDF 中一些小图片的干扰，提高非扫描版 PDF 处理速度
@@ -36,43 +40,76 @@ class RapidOCRPDFLoader(UnstructuredFileLoader):
             rotated_img = cv2.warpAffine(img, M, (new_w, new_h))
             return rotated_img
         
+        def handle_img_ocr(doc, page_index, page, resp):
+            img_list = page.get_image_info(xrefs=True)
+            if img_list:
+                print(f"\nFound {len(img_list)} images on page: {page_index}")
+            for img in img_list:
+                ocr = get_ocr()
+                # print(img)
+                if xref := img.get("xref"):
+                    bbox = img["bbox"]
+                    # 检查图片尺寸是否超过设定的阈值
+                    bbox_width = bbox[2] - bbox[0]
+                    bbox_height = bbox[3] - bbox[1]
+                    print(f"bbox width: {bbox_width:.2f} rect width: {page.rect.width:.2f} "
+                        f"scale: {bbox_width / page.rect.width:.2f} threshold: {PDF_OCR_THRESHOLD[0]}")
+                    print(f"bbox height: {bbox_height:.2f} rect height: {page.rect.height:.2f} "
+                        f"scale: {(bbox_height) / (page.rect.height):.2f} threshold: {PDF_OCR_THRESHOLD[1]}")
+
+                    if ((bbox_width) / (page.rect.width) < PDF_OCR_THRESHOLD[0]
+                        and (bbox_height) / (page.rect.height) < PDF_OCR_THRESHOLD[1]):
+                        continue
+                    # if ((bbox[2] - bbox[0]) / (page.rect.width) < PDF_OCR_THRESHOLD[0]
+                    #     or (bbox[3] - bbox[1]) / (page.rect.height) < PDF_OCR_THRESHOLD[1]):
+                    #     continue
+                    pix = fitz.Pixmap(doc, xref)
+                    samples = pix.samples
+                    if int(page.rotation)!=0:  #如果Page有旋转角度，则旋转图片
+                        img_array = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, -1)
+                        tmp_img = Image.fromarray(img_array);
+                        ori_img = cv2.cvtColor(np.array(tmp_img),cv2.COLOR_RGB2BGR)
+                        rot_img = rotate_img(img=ori_img, angle=360-page.rotation)
+                        img_array = cv2.cvtColor(rot_img, cv2.COLOR_RGB2BGR)
+                    else:
+                        img_array = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, -1)
+
+                    result, _ = ocr(img_array)
+                    if result:
+                        ocr_result = [line[1] for line in result]
+                        ocr_result_text = "\n".join(ocr_result)
+                        # print(f"ocr_result: {ocr_result_text}")
+                        resp += f"{ocr_result_text}\n"
+            return resp
+        
+        def handle_tables(page_index, page, resp):
+            tabs = page.find_tables()
+            if tabs.tables:
+                print(f"\nFound {len(tabs.tables)} tables on page: {page_index}")
+                for tab in tabs:
+                    extracted_table = tab.extract()
+                    # pprint(extracted_table)
+                    # print(json.dumps(extracted_table, ensure_ascii=False))
+            return resp
+
         def pdf2text(filepath):
-            import fitz # pyMuPDF里面的fitz包，不要与pip install fitz混淆
-            import numpy as np
-            ocr = get_ocr()
             doc = fitz.open(filepath)
             resp = ""
 
             b_unit = tqdm.tqdm(total=doc.page_count, desc="RapidOCRPDFLoader context page index: 0")
-            for i, page in enumerate(doc):
-                b_unit.set_description("RapidOCRPDFLoader context page index: {}".format(i))
+            for page_index, page in enumerate(doc):
+                b_unit.set_description("RapidOCRPDFLoader context page index: {}".format(page_index))
                 b_unit.refresh()
                 text = page.get_text("")
                 resp += text + "\n"
 
-                img_list = page.get_image_info(xrefs=True)
-                for img in img_list:
-                    if xref := img.get("xref"):
-                        bbox = img["bbox"]
-                        # 检查图片尺寸是否超过设定的阈值
-                        if ((bbox[2] - bbox[0]) / (page.rect.width) < PDF_OCR_THRESHOLD[0]
-                            or (bbox[3] - bbox[1]) / (page.rect.height) < PDF_OCR_THRESHOLD[1]):
-                            continue
-                        pix = fitz.Pixmap(doc, xref)
-                        samples = pix.samples
-                        if int(page.rotation)!=0:  #如果Page有旋转角度，则旋转图片
-                            img_array = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, -1)
-                            tmp_img = Image.fromarray(img_array);
-                            ori_img = cv2.cvtColor(np.array(tmp_img),cv2.COLOR_RGB2BGR)
-                            rot_img = rotate_img(img=ori_img, angle=360-page.rotation)
-                            img_array = cv2.cvtColor(rot_img, cv2.COLOR_RGB2BGR)
-                        else:
-                            img_array = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, -1)
+                # if i != 0:
+                #     print("\n---------------------------------------------------------------------")
+                # print(text)
 
-                        result, _ = ocr(img_array)
-                        if result:
-                            ocr_result = [line[1] for line in result]
-                            resp += "\n".join(ocr_result)
+                resp = handle_img_ocr(doc, page_index, page, resp)
+
+                resp = handle_tables(page_index, page, resp)
 
                 # 更新进度
                 b_unit.update(1)
