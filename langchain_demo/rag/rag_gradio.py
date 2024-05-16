@@ -14,6 +14,7 @@ from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings,
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_demo.custom.document_loaders import RapidOCRPDFLoader, RapidOCRDocLoader
 from langchain_demo.custom.text_splitter import ChineseRecursiveTextSplitter
+from langchain_demo.rag.markdown_splitter import split_markdown_documents, load_markdown
 
 logging.basicConfig(level=logging.INFO, encoding="utf-8")
 logger = logging.getLogger()
@@ -26,8 +27,8 @@ logger.handlers[0].setFormatter(formatter)
 device="cuda"
 
 model_path = "/root/huggingface/models"
-model_name = "THUDM/chatglm3-6b"
-# model_name = "shenzhi-wang/Llama3-8B-Chinese-Chat"
+# model_name = "THUDM/chatglm3-6b"
+model_name = "shenzhi-wang/Llama3-8B-Chinese-Chat"
 model_full = f"{model_path}/{model_name}"
 
 # embedding_model_name = "BAAI/bge-large-zh-v1.5"
@@ -246,14 +247,17 @@ def load_documents(upload_file: str):
     elif ext == '.txt':
         loader = UnstructuredFileLoader(upload_file, autodetect_encoding=True)
         documents = loader.load()
+    elif ext == '.md':
+        documents = load_markdown(upload_file)
+        return documents
     else:
-        return "仅支持 txt pdf doc docx"
+        return "支持 txt pdf doc docx markdown 文件"
     doc_meta = None
     doc_page_content = ""
     for idx, doc in enumerate(documents):
         if idx == 0:
             doc_meta = doc.metadata
-        cleaned_page_content = re.sub(r'\s+', ' ', doc.page_content)
+        cleaned_page_content = re.sub(r'\n+', ' ', doc.page_content)
         doc_page_content = f"{doc_page_content}\n{cleaned_page_content}"
     documents = [Document(page_content=doc_page_content, metadata=doc_meta)]
     return documents
@@ -301,6 +305,7 @@ def handle_upload_file(upload_file: str, chunk_size: int):
 
     logger.info(f"handle file: {upload_file}")
     file_basename = os.path.basename(upload_file)
+    basename, ext = os.path.splitext(file_basename)
 
     uploading_files[file_basename] = "正在加载文件..."
     documents = load_documents(upload_file)
@@ -311,7 +316,10 @@ def handle_upload_file(upload_file: str, chunk_size: int):
 
     uploading_files[file_basename] = "正在拆分文件..."
     chunk_overlap = int(chunk_size / 4)
-    documents = split_documents(documents, chunk_size, chunk_overlap)
+    if ext == '.md':
+        documents = split_markdown_documents(documents, chunk_size)
+    else:
+        documents = split_documents(documents, chunk_size, chunk_overlap)
     logger.info(f"file: {file_basename} split to {len(documents)} chunks")
 
     uploading_files[file_basename] = f"拆分文件为{len(documents)}份，正在向量化..."
@@ -352,7 +360,7 @@ def init_blocks():
             f"- llm: {model_name}  \n"
             f"- embeddings: {embedding_model_name}  \n"
             f"- rerank: {rerank_model_name}  \n"
-            f"- 支持 txt, pdf, doc, docx")
+            f"- 支持 txt, pdf, doc, docx, markdown")
         with gr.Row():
             with gr.Column(scale=3):
                 # upload_file = gr.File(file_types=[".text"], label="对话文件")
@@ -364,7 +372,7 @@ def init_blocks():
                     temperature = gr.Number(value=0.1, minimum=0.01, maximum=0.99, label="temperature")
                 with gr.Row():
                     embedding_top_k = gr.Number(value=15, minimum=5, maximum=100, label="embedding_top_k")
-                    rerank_top_k = gr.Number(value=5, minimum=1, maximum=5, label="rerank_top_k")
+                    rerank_top_k = gr.Number(value=3, minimum=1, maximum=5, label="rerank_top_k")
                 searched_docs = gr.Textbox(label="检索到的文本", lines=10)
             with gr.Column(scale=5):
                 query_doc = doc_loaded()
