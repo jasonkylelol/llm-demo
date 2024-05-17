@@ -399,4 +399,5 @@ if __name__ == "__main__":
     init_reranker()
 
     app = init_blocks()
-    app.queue(max_size=10).launch(server_name='0.0.0.0', server_port=8060, show_api=False, share=False)
+    app.queue(max_size=10).launch(server_name='0.0.0.0', server_port=8060, show_api=False,
+        share=True, favicon_path="langchain_demo/rag/icons/shiba.svg")
