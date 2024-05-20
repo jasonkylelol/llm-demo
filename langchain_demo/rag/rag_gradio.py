@@ -58,7 +58,7 @@ def generate_kb_prompt(chat_history, kb_file, embedding_top_k, rerank_top_k) -> 
 
     rerank_docs = rerank_documents(query, searched_docs, rerank_top_k)
 
-    print(f"query: {query}", flush=True)
+    print(f"query: {query}\n", flush=True)
     knowledge = ""
     for idx, document in enumerate(rerank_docs):
         print(f"{document.page_content}\n", flush=True)
@@ -356,7 +356,7 @@ def uploading_status():
 
 def init_blocks():
     with gr.Blocks(title="RAG") as app:
-        gr.Markdown("# RAG  \n"
+        gr.Markdown("# RAG 🤖  \n"
             f"- llm: {model_name}  \n"
             f"- embeddings: {embedding_model_name}  \n"
             f"- rerank: {rerank_model_name}  \n"
@@ -400,4 +400,4 @@ if __name__ == "__main__":
 
     app = init_blocks()
     app.queue(max_size=10).launch(server_name='0.0.0.0', server_port=8060, show_api=False,
-        share=True, favicon_path="langchain_demo/rag/icons/shiba.svg")
+        share=False, favicon_path="langchain_demo/icons/shiba.svg")
