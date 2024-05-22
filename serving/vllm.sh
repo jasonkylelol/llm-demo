@@ -1,7 +1,7 @@
 #!/bin/bash
 
 image=vllm/vllm-openai:v0.4.2
-gpus="device=3"
+gpus='"device=2,3"'
 model=shenzhi-wang/Llama3-8B-Chinese-Chat
 
 docker run --runtime nvidia --gpus $gpus \
@@ -9,4 +9,4 @@ docker run --runtime nvidia --gpus $gpus \
     -p 38000:8000 \
     --ipc=host \
     $image \
-    --model /models/$model --gpu-memory-utilization 0.8
+    --model /models/$model --gpu-memory-utilization 0.9 --tensor-parallel-size 2

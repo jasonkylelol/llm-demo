@@ -8,3 +8,4 @@ nohup.out
 hf_llm_download
 langchain_demo/svc_start.sh
 *.svg
+serving/output
