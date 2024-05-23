@@ -15,8 +15,7 @@ def load_documents(upload_file: str):
         loader = RapidOCRDocLoader(upload_file)
         documents = loader.load()
     elif ext == '.txt':
-        loader = UnstructuredFileLoader(upload_file, autodetect_encoding=True)
-        documents = loader.load()
+        documents = load_txt_with_encodings(upload_file)
     else:
         return "仅支持 txt pdf doc docx"
     # doc_meta = None
@@ -30,9 +29,21 @@ def load_documents(upload_file: str):
     return documents
 
 
+def load_txt_with_encodings(file):
+    encoding_options = [None, "gbk", "gb2312", "gb18030"]
+    for encoding in encoding_options:
+        try:
+            loader = UnstructuredFileLoader(file, encoding=encoding)
+            document = loader.load()
+            print(f"use encoding {encoding} for {file} succeed", flush=True)
+            return document
+        except Exception as e:
+            print(f"try use encoding {encoding} for {file} failed, exception: {e}", flush=True)
+
+
 if __name__ == "__main__":
-    f = "cache/files/平台对接说明.pdf"
-    # f = "cache/files/小米汽车发布会.txt"
+    # f = "cache/files/平台对接说明.pdf"
+    f = "cache/files/红楼梦.txt"
     documents = load_documents(f)
     print(f"split {f} to {len(documents)} documents")
 
