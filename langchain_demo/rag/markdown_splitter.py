@@ -86,9 +86,9 @@ def split_by_recursive(header, cleaned_content, chunk_size):
 
 
 def extract_table(html_string):
-    html_contents = re.findall(r'<html>(.*?)</html>', html_string, re.DOTALL)
-    cleaned_content = re.sub(r'<html>(.*?)</html>', '', html_string, flags=re.DOTALL)
-    html_contents = ['<html>' + item + '</html>' for item in html_contents]
+    html_contents = re.findall(r'<table>(.*?)</table>', html_string, re.DOTALL)
+    cleaned_content = re.sub(r'<table>(.*?)</table>', '', html_string, flags=re.DOTALL)
+    html_contents = ['<table>' + item + '</table>' for item in html_contents]
     return html_contents, cleaned_content
 
 
