@@ -1,5 +1,5 @@
 import sys, os, logging
-import re
+import re, math
 from typing import Tuple, List
 from threading import Thread
 
@@ -12,6 +12,9 @@ from langchain_core.documents import Document
 from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
 from langchain_community.embeddings.huggingface import HuggingFaceBgeEmbeddings, HuggingFaceEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
+from langchain_community.vectorstores.utils import (
+    DistanceStrategy,
+)
 from langchain_demo.custom.document_loaders import RapidOCRPDFLoader, RapidOCRDocLoader
 from langchain_demo.custom.text_splitter import ChineseRecursiveTextSplitter
 from langchain_demo.rag.markdown_splitter import split_markdown_documents, load_markdown
@@ -45,6 +48,7 @@ max_new_tokens=8192
 
 model, tokenizer = None, None
 embedding_model = None
+embedding_score_threshold = 0.5
 rerank_model, rerank_tokenizer = None, None
 
 vector_db_dict = {}
@@ -77,13 +81,25 @@ def generate_kb_prompt(chat_history, kb_file, embedding_top_k, rerank_top_k) -> 
 def embedding_query(query, kb_file, embedding_top_k):
     vector_db = vector_db_dict.get(kb_file)
 
-    # searched_docs = vector_db.similarity_search(query, k=3)
-    embedding_vectors = embedding_model.embed_query(query)
-    searched_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=embedding_top_k)
-    return searched_docs
+    # searched_docs = vector_db.similarity_search(query, k=embedding_top_k)
+    searched_docs = vector_db.similarity_search_with_relevance_scores(query, k=embedding_top_k)
+    # embedding_vectors = embedding_model.embed_query(query)
+    # searched_docs = vector_db.similarity_search_by_vector(embedding_vectors, k=embedding_top_k)
+    # searched_docs = vector_db.similarity_search_with_score_by_vector(embedding_vectors, k=embedding_top_k)
+    docs = []
+    for searched_doc in searched_docs:
+        doc = searched_doc[0]
+        score = searched_doc[1]
+        # print(f"{score} : {doc.page_content}")
+        if score < embedding_score_threshold:
+            continue
+        docs.append(doc)
+    return docs
 
 
 def rerank_documents(query, docs, rerank_top_k):
+    if len(docs) < 2:
+        return docs
     pairs = []
     for idx, document in enumerate(docs):
         pairs.append([query, document.page_content])
@@ -296,6 +312,15 @@ def human_readable_size(file_path):
     return '{:.2f} {}'.format(size_bytes, size_names[i-1])
 
 
+def custom_relevance_score_fn(distance: float) -> float:
+    score = 1.0 - distance / math.sqrt(2)
+    score = 0 if score < 0 else score 
+    return score
+    # if distance > 0:
+    #     return 1.0 - distance
+    # return -1.0 * distance
+
+
 def handle_upload_file(upload_file: str, chunk_size: int):
     global vector_db_dict, uploading_files
 
@@ -323,7 +348,8 @@ def handle_upload_file(upload_file: str, chunk_size: int):
     logger.info(f"file: {file_basename} split to {len(documents)} chunks")
 
     uploading_files[file_basename] = f"拆分文件为{len(documents)}份，正在向量化..."
-    vector_db = FAISS.from_documents(documents, embedding_model)
+    vector_db = FAISS.from_documents(documents, embedding_model,
+        distance_strategy=DistanceStrategy.EUCLIDEAN_DISTANCE, relevance_score_fn=custom_relevance_score_fn)
 
     vector_db_key = f"{file_basename}({human_readable_size(upload_file)})"
     if vector_db_key in vector_db_dict.keys():
