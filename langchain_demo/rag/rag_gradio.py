@@ -48,7 +48,7 @@ max_new_tokens=8192
 
 model, tokenizer = None, None
 embedding_model = None
-embedding_score_threshold = 0.5
+embedding_score_threshold = 0.3
 rerank_model, rerank_tokenizer = None, None
 
 vector_db_dict = {}
