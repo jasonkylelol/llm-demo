@@ -29,9 +29,9 @@ def generate_kb_prompt(chat_history, kb_file, embedding_top_k, rerank_top_k) -> 
     logger.info(f"query: {query}")
     knowledge = ""
     for idx, document in enumerate(rerank_docs):
-        logger.info(f"{document.page_content}")
         knowledge = f"{knowledge}\n\n{document.page_content}"
     knowledge = knowledge.strip()
+    logger.info(f"knowledge:\n{knowledge}")
 
     kb_query = ("<指令>根据已知信息，简洁和专业的来回答问题。如果无法从中得到答案，"
         "请说 “根据已知信息无法回答该问题”，不允许在答案中添加编造成分，答案请使用中文。</指令>\n"
