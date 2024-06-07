@@ -6,7 +6,8 @@ from typing import List, Optional, Any
 def load_llama3(model_path, device):
     model_config = AutoConfig.from_pretrained(model_path)
     tokenizer = AutoTokenizer.from_pretrained(model_path, device_map=device)
-    model = AutoModelForCausalLM.from_pretrained(model_path, config=model_config,
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path, config=model_config,
         torch_dtype=torch.bfloat16, device_map=device)
     return model, tokenizer
 

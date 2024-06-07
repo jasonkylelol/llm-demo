@@ -7,7 +7,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from rag.logger import logger
 from langchain_core.documents import Document
 from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
-from langchain_community.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_community.vectorstores.utils import DistanceStrategy
 from langchain_demo.custom.document_loaders import RapidOCRPDFLoader, RapidOCRDocLoader
@@ -148,7 +148,7 @@ def rerank_documents(query, docs, rerank_top_k):
 def init_embeddings():
     global embedding_model
 
-    logger.info(f"load embedding from {embedding_model_full}")
+    logger.info(f"Load embedding from {embedding_model_full}")
     embedding_model = HuggingFaceEmbeddings(
         model_name=embedding_model_full,
         model_kwargs={"device": device},
@@ -159,7 +159,7 @@ def init_embeddings():
 def init_reranker():
     global rerank_model, rerank_tokenizer
 
-    logger.info(f"load reranker from {rerank_model_full}")
+    logger.info(f"Load reranker from {rerank_model_full}")
     rerank_tokenizer = AutoTokenizer.from_pretrained(
         rerank_model_full,
         device_map=device)

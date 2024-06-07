@@ -3,8 +3,8 @@
 device="cuda"
 
 model_path = "/root/huggingface/models"
-# model_name = "THUDM/chatglm3-6b"
-model_name = "shenzhi-wang/Llama3-8B-Chinese-Chat"
+model_name = "THUDM/glm-4-9b-chat"
+# model_name = "shenzhi-wang/Llama3-8B-Chinese-Chat"
 model_full = f"{model_path}/{model_name}"
 
 

@@ -26,10 +26,10 @@ def generate_kb_prompt(chat_history, kb_file, embedding_top_k, rerank_top_k) -> 
 
     rerank_docs = rerank_documents(query, searched_docs, rerank_top_k)
 
-    logger.info(f"query: {query}\n", flush=True)
+    logger.info(f"query: {query}")
     knowledge = ""
     for idx, document in enumerate(rerank_docs):
-        logger.info(f"{document.page_content}\n", flush=True)
+        logger.info(f"{document.page_content}")
         knowledge = f"{knowledge}\n\n{document.page_content}"
     knowledge = knowledge.strip()
 
@@ -52,8 +52,9 @@ def generate_chat_prompt(chat_history) -> Tuple[str, List]:
         model_history.append({"role":"user","content":user_msg})
         assistant_msg = hist[1]
         model_history.append({"role":"assistant","content":assistant_msg})
-        logger.info(f"user: {user_msg}\nassistant: {assistant_msg}", flush=True)
-    logger.info(f"query: {query}", flush=True)
+        logger.info(f"user: {user_msg}")
+        logger.info(f"assistant: {assistant_msg}")
+    logger.info(f"query: {query}")
     return query, model_history
 
 
@@ -83,23 +84,22 @@ def handle_chat(chat_history, kb_file, temperature, embedding_top_k, rerank_top_
         yield chat_resp(chat_history, err)
         return
     
-    logger.info(f"temperature: {temperature} embedding_top_k: {embedding_top_k} rerank_top_k: {rerank_top_k}")
+    logger.info(f"Handle chat: temperature: {temperature} embedding_top_k: {embedding_top_k} rerank_top_k: {rerank_top_k}")
 
     query, history, searched_docs = generate_query(chat_history, kb_file, embedding_top_k, rerank_top_k)
 
-    model_name = model_name.lower()
-    if "glm-4" in model_name:
+    if "glm-4" in model_name.lower():
         streamer, thread = glm4_stream_chat(query, history, model, tokenizer,
             temperature=temperature, max_new_tokens=max_new_tokens)
-    elif "llama3" in model_name:
+    elif "llama3" in model_name.lower():
         streamer, thread = llama3_stream_chat(query, history, model, tokenizer,
             temperature=temperature, max_new_tokens=max_new_tokens)
     else:
         raise RuntimeError(f"f{model_name} is not support")
     
     generated_text = ""
-    for new_text in streamer:
-        generated_text += new_text
+    for new_token in streamer:
+        generated_text += new_token
         yield chat_resp(chat_history, generated_text, searched_docs)
     thread.join()
 
@@ -107,11 +107,10 @@ def handle_chat(chat_history, kb_file, temperature, embedding_top_k, rerank_top_
 def init_llm():
     global model, tokenizer
 
-    logger.info(f"load from {model_full}")
-    model_name = model_name.lower()
-    if "glm-4" in model_name:
+    logger.info(f"Load from {model_full}")
+    if "glm-4" in model_name.lower():
         model, tokenizer = load_glm4(model_full, device)
-    elif "llama3" in model_name:
+    elif "llama3" in model_name.lower():
         model, tokenizer = load_llama3(model_full, device)
     else:
         raise RuntimeError(f"{model_name} is not support")
@@ -123,7 +122,7 @@ def handle_upload_file(upload_file: str, chunk_size: int):
         logger.error("invalid upload_file")
         return
 
-    logger.info(f"handle file: {upload_file}")
+    logger.info(f"Handle file: {upload_file}")
     file_basename = os.path.basename(upload_file)
 
     uploading_status[file_basename] = "正在加载文件..."
