@@ -8,7 +8,8 @@ from rag.model_llama3 import load_llama3, llama3_stream_chat
 from rag.model_glm4 import load_glm4, glm4_stream_chat
 from rag.config import (
     device, model_full, model_name, max_new_tokens,
-    embedding_model_name, rerank_model_name
+    embedding_model_name, rerank_model_name,
+    embedding_top_k, rerank_top_k,
 )
 from rag.knowledge_base import (
     init_embeddings, init_reranker,
@@ -88,13 +89,13 @@ def chat_resp(chat_history, msg, searched_docs=[]):
         # with open(cache_file, "w+") as f:
         #     f.write(knowledge)
         chat_history[-1][1] = msg
-        return chat_history, knowledge
+        return chat_history, gr.Markdown(f"# 检索信息  \n{knowledge}")
     else:
         chat_history[-1][1] = msg
         return chat_history, ""
 
 
-def handle_chat(chat_history, kb_file, temperature, embedding_top_k, rerank_top_k):
+def handle_chat(chat_history, kb_file, temperature, embedding_top_k=embedding_top_k, rerank_top_k=rerank_top_k):
     if kb_file is not None and not check_kb_exist(kb_file):
         err = f"文件: {kb_file} 不存在"
         logger.error(f"[handle_chat] err: {err}")
@@ -193,7 +194,7 @@ def init_blocks():
             f"- rerank: {rerank_model_name}  \n"
             f"- 支持 txt, pdf, docx, markdown")
         with gr.Row():
-            with gr.Column(scale=3):
+            with gr.Column(scale=5):
                 # upload_file = gr.File(file_types=[".text"], label="对话文件")
                 upload_file = gr.UploadButton("对话文件上传", variant="primary")
                 upload_stat = gr.Markdown(value=uploading_stat, every=0.5)
@@ -201,10 +202,10 @@ def init_blocks():
                     chunk_size = gr.Number(value=300, minimum=100, maximum=1000, label="chunk_size")
                     # chunk_overlap = gr.Number(value=50, minimum=10, maximum=500, label="chunk_overlap")
                     temperature = gr.Number(value=0.1, minimum=0.01, maximum=0.99, label="temperature")
-                with gr.Row():
-                    embedding_top_k = gr.Number(value=15, minimum=5, maximum=100, label="embedding_top_k")
-                    rerank_top_k = gr.Number(value=3, minimum=1, maximum=5, label="rerank_top_k")
-                searched_docs = gr.Textbox(label="检索到的文本", lines=10)
+                # with gr.Row():
+                    # embedding_top_k = gr.Number(value=15, minimum=5, maximum=100, label="embedding_top_k")
+                    # rerank_top_k = gr.Number(value=3, minimum=1, maximum=5, label="rerank_top_k")
+                searched_docs = gr.Markdown()
             with gr.Column(scale=5):
                 query_doc = doc_loaded()
                 chatbot = gr.Chatbot(label="chat", show_label=False)
@@ -214,9 +215,9 @@ def init_blocks():
                     clear = gr.ClearButton(value="清空聊天记录", components=[query, chatbot, searched_docs], scale=1)
         query.submit(
             handle_add_msg, inputs=[query, chatbot], outputs=[query, chatbot]).then(
-            handle_chat, inputs=[chatbot, query_doc, temperature, embedding_top_k, rerank_top_k],
-                outputs=[chatbot, searched_docs]).then(
-                lambda: gr.MultimodalTextbox(interactive=True), outputs=[query])
+                handle_chat, inputs=[chatbot, query_doc, temperature],
+                    outputs=[chatbot, searched_docs]).then(
+                    lambda: gr.MultimodalTextbox(interactive=True), outputs=[query])
         upload_file.upload(
             handle_upload_file, inputs=[upload_file, chunk_size], show_progress="full").then(
             doc_loaded, outputs=query_doc)
