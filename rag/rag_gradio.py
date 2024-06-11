@@ -2,6 +2,7 @@ import sys, os
 from typing import Tuple, List
 import gradio as gr
 
+from rag.utils import md5sum_str
 from rag.logger import logger
 from rag.model_llama3 import load_llama3, llama3_stream_chat
 from rag.model_glm4 import load_glm4, glm4_stream_chat
@@ -27,6 +28,8 @@ def generate_kb_prompt(chat_history, kb_file, embedding_top_k, rerank_top_k) -> 
     rerank_docs = rerank_documents(query, searched_docs, rerank_top_k)
 
     logger.info(f"query: {query}")
+    if len(rerank_docs) == 0:
+        return query, [], []
     knowledge = ""
     for idx, document in enumerate(rerank_docs):
         knowledge = f"{knowledge}\n\n{document.page_content}"
@@ -49,11 +52,17 @@ def generate_chat_prompt(chat_history) -> Tuple[str, List]:
     model_history = []
     for hist in history:
         user_msg = hist[0]
-        model_history.append({"role":"user","content":user_msg})
         assistant_msg = hist[1]
-        model_history.append({"role":"assistant","content":assistant_msg})
-        logger.info(f"user: {user_msg}")
-        logger.info(f"assistant: {assistant_msg}")
+        if isinstance(user_msg, str):
+            model_history.append({"role":"user","content":user_msg})
+            logger.info(f"user: {user_msg}")
+        else:
+            logger.warning(f"skip user: {user_msg}")
+        if isinstance(assistant_msg, str):
+            model_history.append({"role":"assistant","content":assistant_msg})
+            logger.info(f"assistant: {assistant_msg}")
+        else:
+            logger.warning(f"skip assistant: {assistant_msg}")
     logger.info(f"query: {query}")
     return query, model_history
 
@@ -70,11 +79,19 @@ def generate_query(chat_history, kb_file, embedding_top_k, rerank_top_k):
 
 
 def chat_resp(chat_history, msg, searched_docs=[]):
-    chat_history[-1][1] = msg
-    knowledge = ""
-    for idx, doc in enumerate(searched_docs):
-        knowledge = f"{knowledge}{doc.page_content}\n\n"
-    return chat_history, knowledge.strip()
+    if len(searched_docs) > 0:
+        knowledge = ""
+        for idx, doc in enumerate(searched_docs):
+            knowledge = f"{knowledge}{doc.page_content}\n\n"
+        knowledge = knowledge.strip()
+        # cache_file = f"rag/cache/{md5sum_str(chat_history[0][0])}.txt"
+        # with open(cache_file, "w+") as f:
+        #     f.write(knowledge)
+        chat_history[-1][1] = msg
+        return chat_history, knowledge
+    else:
+        chat_history[-1][1] = msg
+        return chat_history, ""
 
 
 def handle_chat(chat_history, kb_file, temperature, embedding_top_k, rerank_top_k):
@@ -149,7 +166,12 @@ def doc_loaded():
 
 def handle_add_msg(query, chat_history):
     # logger.info(query, chat_history)
-    return gr.Textbox(value=None, interactive=False), chat_history + [[query, None]]
+    for x in query["files"]:
+        chat_history.append(((x,), None))
+    if query["text"] is not None:
+        chat_history.append((query["text"], None))
+    return gr.MultimodalTextbox(value=None, interactive=False), chat_history
+    # return gr.Textbox(value=None, interactive=False), chat_history + [[query, None]]
 
 
 def uploading_stat():
@@ -169,7 +191,7 @@ def init_blocks():
             f"- llm: {model_name}  \n"
             f"- embeddings: {embedding_model_name}  \n"
             f"- rerank: {rerank_model_name}  \n"
-            f"- 支持 txt, pdf, doc, docx, markdown")
+            f"- 支持 txt, pdf, docx, markdown")
         with gr.Row():
             with gr.Column(scale=3):
                 # upload_file = gr.File(file_types=[".text"], label="对话文件")
@@ -185,14 +207,16 @@ def init_blocks():
                 searched_docs = gr.Textbox(label="检索到的文本", lines=10)
             with gr.Column(scale=5):
                 query_doc = doc_loaded()
-                chatbot = gr.Chatbot(label="chatroom", show_label=False)
+                chatbot = gr.Chatbot(label="chat", show_label=False)
                 with gr.Row():
-                    query = gr.Textbox(label="Say something", scale=4)
+                    query = gr.MultimodalTextbox(label="chat with picture", show_label=False,
+                        scale=4, file_types=["image"])
                     clear = gr.ClearButton(value="清空聊天记录", components=[query, chatbot, searched_docs], scale=1)
         query.submit(
             handle_add_msg, inputs=[query, chatbot], outputs=[query, chatbot]).then(
-            handle_chat, inputs=[chatbot, query_doc, temperature, embedding_top_k, rerank_top_k], outputs=[chatbot, searched_docs]).then(
-            lambda: gr.Textbox(interactive=True), outputs=[query])
+            handle_chat, inputs=[chatbot, query_doc, temperature, embedding_top_k, rerank_top_k],
+                outputs=[chatbot, searched_docs]).then(
+                lambda: gr.MultimodalTextbox(interactive=True), outputs=[query])
         upload_file.upload(
             handle_upload_file, inputs=[upload_file, chunk_size], show_progress="full").then(
             doc_loaded, outputs=query_doc)

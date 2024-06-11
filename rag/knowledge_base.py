@@ -34,7 +34,7 @@ def load_documents(upload_file: str):
     if ext == '.pdf':
         loader = RapidOCRPDFLoader(upload_file)
         documents = loader.load()
-    elif ext in ['.doc', '.docx']:
+    elif ext == '.docx':
         loader = RapidOCRDocLoader(upload_file)
         documents = loader.load()
     elif ext == '.txt':
@@ -44,7 +44,7 @@ def load_documents(upload_file: str):
         documents = load_markdown(upload_file)
         return documents
     else:
-        return "支持 txt pdf doc docx markdown 文件"
+        return "支持 txt pdf docx markdown 文件"
     doc_meta = None
     doc_page_content = ""
     for idx, doc in enumerate(documents):
