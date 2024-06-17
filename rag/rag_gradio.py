@@ -2,6 +2,8 @@ import sys, os
 from typing import Tuple, List
 import gradio as gr
 
+sys.path.append(f"{os.path.dirname(__file__)}/..")
+
 from rag.utils import md5sum_str
 from rag.logger import logger
 from rag.model_llama3 import load_llama3, llama3_stream_chat
@@ -79,20 +81,9 @@ def generate_query(chat_history, kb_file, embedding_top_k, rerank_top_k):
     return query, history, searched_docs
 
 
-def chat_resp(chat_history, msg, searched_docs=[]):
-    if len(searched_docs) > 0:
-        knowledge = ""
-        for idx, doc in enumerate(searched_docs):
-            knowledge = f"{knowledge}{doc.page_content}\n\n"
-        knowledge = knowledge.strip()
-        # cache_file = f"rag/cache/{md5sum_str(chat_history[0][0])}.txt"
-        # with open(cache_file, "w+") as f:
-        #     f.write(knowledge)
-        chat_history[-1][1] = msg
-        return chat_history, gr.Markdown(f"# 检索信息  \n{knowledge}")
-    else:
-        chat_history[-1][1] = msg
-        return chat_history, ""
+def chat_resp(chat_history, msg):
+    chat_history[-1][1] = msg
+    return chat_history
 
 
 def handle_chat(chat_history, kb_file, temperature, embedding_top_k=embedding_top_k, rerank_top_k=rerank_top_k):
@@ -102,7 +93,8 @@ def handle_chat(chat_history, kb_file, temperature, embedding_top_k=embedding_to
         yield chat_resp(chat_history, err)
         return
     
-    logger.info(f"Handle chat: temperature: {temperature} embedding_top_k: {embedding_top_k} rerank_top_k: {rerank_top_k}")
+    logger.info(f"Handle chat: temperature: {temperature} "
+        f"embedding_top_k: {embedding_top_k} rerank_top_k: {rerank_top_k}")
 
     query, history, searched_docs = generate_query(chat_history, kb_file, embedding_top_k, rerank_top_k)
 
@@ -118,7 +110,14 @@ def handle_chat(chat_history, kb_file, temperature, embedding_top_k=embedding_to
     generated_text = ""
     for new_token in streamer:
         generated_text += new_token
-        yield chat_resp(chat_history, generated_text, searched_docs)
+        yield chat_resp(chat_history, generated_text)
+    if len(searched_docs) > 0:
+        knowledge = ""
+        for idx, doc in enumerate(searched_docs):
+            knowledge = f"{knowledge}{doc.page_content}\n\n"
+        knowledge = knowledge.strip()
+        generated_text += f"<details><summary>参考信息</summary>{knowledge}</details>"
+        yield chat_resp(chat_history, generated_text)
     thread.join()
 
 
@@ -194,7 +193,7 @@ def init_blocks():
             f"- rerank: {rerank_model_name}  \n"
             f"- 支持 txt, pdf, docx, markdown")
         with gr.Row():
-            with gr.Column(scale=5):
+            with gr.Column(scale=1):
                 # upload_file = gr.File(file_types=[".text"], label="对话文件")
                 upload_file = gr.UploadButton("对话文件上传", variant="primary")
                 upload_stat = gr.Markdown(value=uploading_stat, every=0.5)
@@ -205,18 +204,16 @@ def init_blocks():
                 # with gr.Row():
                     # embedding_top_k = gr.Number(value=15, minimum=5, maximum=100, label="embedding_top_k")
                     # rerank_top_k = gr.Number(value=3, minimum=1, maximum=5, label="rerank_top_k")
-                searched_docs = gr.Markdown()
             with gr.Column(scale=5):
                 query_doc = doc_loaded()
                 chatbot = gr.Chatbot(label="chat", show_label=False)
                 with gr.Row():
                     query = gr.MultimodalTextbox(label="chat with picture", show_label=False,
                         scale=4, file_types=["image"])
-                    clear = gr.ClearButton(value="清空聊天记录", components=[query, chatbot, searched_docs], scale=1)
+                    clear = gr.ClearButton(value="清空聊天记录", components=[query, chatbot], scale=1)
         query.submit(
             handle_add_msg, inputs=[query, chatbot], outputs=[query, chatbot]).then(
-                handle_chat, inputs=[chatbot, query_doc, temperature],
-                    outputs=[chatbot, searched_docs]).then(
+                handle_chat, inputs=[chatbot, query_doc, temperature], outputs=[chatbot]).then(
                     lambda: gr.MultimodalTextbox(interactive=True), outputs=[query])
         upload_file.upload(
             handle_upload_file, inputs=[upload_file, chunk_size], show_progress="full").then(
