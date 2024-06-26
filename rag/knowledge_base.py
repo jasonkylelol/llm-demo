@@ -12,7 +12,7 @@ from langchain_community.vectorstores.faiss import FAISS
 from langchain_community.vectorstores.utils import DistanceStrategy
 from langchain_demo.custom.document_loaders import RapidOCRPDFLoader, RapidOCRDocLoader
 from langchain_demo.custom.text_splitter import ChineseRecursiveTextSplitter
-from langchain_demo.rag.markdown_splitter import split_markdown_documents, load_markdown
+from langchain_demo.custom.text_splitter.markdown_splitter import split_markdown_documents, load_markdown
 from rag.config import device, embedding_model_full, rerank_model_full
 
 embedding_model = None
@@ -62,7 +62,7 @@ def split_documents(file_basename, documents: list, chunk_size: int):
     if ext == '.md':
         documents = split_markdown_documents(documents, chunk_size)
     else:
-        documents = split_documents(documents, chunk_size, chunk_overlap)
+        documents = split_text_documents(documents, chunk_size, chunk_overlap)
     logger.info(f"file: {file_basename} split to {len(documents)} chunks")
     return documents
 
