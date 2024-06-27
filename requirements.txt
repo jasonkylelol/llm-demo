@@ -17,3 +17,5 @@ pillow
 accelerate
 tiktoken
 faiss-cpu
+pycocotools
+timm
