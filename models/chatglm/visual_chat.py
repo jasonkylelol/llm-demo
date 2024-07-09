@@ -39,20 +39,22 @@ def generate_query(chat_history):
             # print(f"user: {user_msg}")
         elif isinstance(user_msg, tuple):
             pic_file = user_msg[0]
-            print(f"pic_file: {pic_file}")
+            # print(f"pic_file: {pic_file}")
         else:
             print(f"skip user: {user_msg}")
         if isinstance(assistant_msg, str):
             model_history.append({"role":"assistant","content":assistant_msg})
             # print(f"assistant: {assistant_msg}")
         else:
-            print(f"skip assistant: {assistant_msg}")
-    query = f"<指令>根据已知信息，简洁和专业的来回答问题。不允许在答案中添加编造成分</指令>\n<问题>{query}</问题>"
-    print(f"query: {query}")
-    return query, [], pic_file
+            pass
+            # print(f"skip assistant: {assistant_msg}")
+    # query = f"<指令>根据已知信息，简洁和专业的来回答问题。不允许在答案中添加编造成分</指令>\n<问题>{query}</问题>"
+    # print(f"query: {query}")
+    return query, model_history, pic_file
 
 
 def glm4v_stream_chat(query, history, pic_file, model, tokenizer):
+    print(f"{pic_file}\n{query}\n{history}\n")
     img = None
     try:
         img = Image.open(pic_file).convert("RGB")
@@ -125,27 +127,28 @@ def handle_add_msg(query, chat_history):
 
 def init_llm():
     global model, tokenizer
+    print(f"load model from {model_full}")
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_full,
         trust_remote_code=True,
         encode_special_tokens=True
     )
-    # model = AutoModel.from_pretrained(
-    #     model_full,
-    #     trust_remote_code=True,
-    #     device_map=device,
-    #     torch_dtype=torch.bfloat16,
-    #     low_cpu_mem_usage=True,
-    # ).eval()
     model = AutoModel.from_pretrained(
         model_full,
         trust_remote_code=True,
-        quantization_config=BitsAndBytesConfig(load_in_8bit=True),
-        torch_dtype=torch.float16,
-        low_cpu_mem_usage=True,
         device_map=device,
+        torch_dtype=torch.bfloat16,
+        # low_cpu_mem_usage=True,
     ).eval()
+    # model = AutoModel.from_pretrained(
+    #     model_full,
+    #     trust_remote_code=True,
+    #     quantization_config=BitsAndBytesConfig(load_in_8bit=True),
+    #     torch_dtype=torch.float16,
+    #     # low_cpu_mem_usage=True,
+    #     device_map=device,
+    # ).eval()
 
 
 def init_blocks():

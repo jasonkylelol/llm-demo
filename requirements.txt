@@ -19,3 +19,5 @@ tiktoken
 faiss-cpu
 pycocotools
 timm
+accelerate
+bitsandbytes
