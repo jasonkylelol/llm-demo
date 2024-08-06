@@ -4,12 +4,13 @@ import threading
 from datetime import datetime
 
 api_key = "EMPTY"
-model = "/models/shenzhi-wang/Llama3-8B-Chinese-Chat"
+# model = "THUDM/glm-4-9b-chat"
+model = "llama3/llama-3-chinese-8b-instruct-v2"
 
 def init_client():
     client = OpenAI(
         api_key=api_key,
-        base_url="http://192.168.0.20:38000/v1",
+        base_url="http://192.168.0.20:38061/v1",
     )
     return client
 
@@ -29,9 +30,9 @@ def generate_content(client):
         chunk_message = chunk.choices[0].delta
         if not chunk_message.content:
             continue
-        # stream_print(chunk_message.content)
+        stream_print(chunk_message.content)
         full_msg += chunk_message.content
-    # print("")
+    print("")
     return full_msg
 
 
@@ -44,8 +45,8 @@ def xprint(msg):
     print(f"[{now}] {msg}", flush=True)
 
 if __name__ == "__main__":
-    thread_num = 8
-    loop_num = 10
+    thread_num = 1
+    loop_num = 1
     threads = []
 
     def loop():
@@ -53,9 +54,9 @@ if __name__ == "__main__":
         for i in range(loop_num):
             # xprint(f"{threading.current_thread().name}: loop: {i}")
             full_msg = generate_content(client)
-            with open(f"serving/output/{threading.current_thread().name}_output.txt", "a+") as f:
-                full_msg = re.sub(r'\n+', ' ', full_msg)
-                f.write(f"{full_msg}\n\n\n")
+            # with open(f"serving/output/{threading.current_thread().name}_output.txt", "a+") as f:
+            #     full_msg = re.sub(r'\n+', ' ', full_msg)
+            #     f.write(f"{full_msg}\n\n\n")
             # xprint(f"{threading.current_thread().name}: msg len: {len(full_msg)}")
 
     xprint("start")
