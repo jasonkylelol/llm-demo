@@ -249,7 +249,7 @@ async def stream_predict(
         choices=[choice_data],
         object="chat.completion.chunk",
     )
-    yield "{}".format(chunk.model_dump_json(exclude_unset=True))
+    yield chunk.model_dump_json(exclude_unset=True)
 
     if isinstance(input, str):
         prompt = generate_completion_prompt(input)
@@ -284,14 +284,15 @@ async def stream_predict(
         chunk = ChatCompletionResponse(
             model=model_id, choices=[choice_data], object="chat.completion.chunk"
         )
-        yield "{}".format(chunk.model_dump_json(exclude_unset=True))
+        print(new_text)
+        yield chunk.model_dump_json(exclude_unset=True)
     choice_data = ChatCompletionResponseStreamChoice(
         index=0, delta=DeltaMessage(), finish_reason="stop"
     )
     chunk = ChatCompletionResponse(
         model=model_id, choices=[choice_data], object="chat.completion.chunk"
     )
-    yield "{}".format(chunk.model_dump_json(exclude_unset=True))
+    yield chunk.model_dump_json(exclude_unset=True)
     yield "[DONE]"
 
 

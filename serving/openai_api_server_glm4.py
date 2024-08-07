@@ -421,6 +421,13 @@ async def create_chat_completion(request: ChatCompletionRequest):
         tool_calls=tool_calls,
     )
 
+    if message.content and isinstance(message.content, str):
+        prefix = "```json\n"
+        if message.content.startswith(prefix):
+            message.content = message.content[len(prefix):]
+            message.content = message.content.replace("\n", "")
+            message.content = message.content.replace("```", "")
+
     # logger.debug(f"==== message ====\n{message}")
     print(f"==== message ====\n{message}")
 
