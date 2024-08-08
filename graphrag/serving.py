@@ -16,13 +16,12 @@ class GraphRAGQueryRequest(BaseModel):
     method: Literal["local", "global"]
     query: str
 
-
 class GraphRAGQueryResponse(BaseModel):
     response: str
 
 
 @app.post("/query", response_model=GraphRAGQueryResponse)
-def create_chat_completion(request: GraphRAGQueryRequest):
+def query(request: GraphRAGQueryRequest):
     if request.root.strip() == "" or request.query.strip() == "":
         raise HTTPException(status_code=400, detail="Invalid request")
     
