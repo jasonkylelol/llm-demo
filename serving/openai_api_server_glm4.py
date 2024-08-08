@@ -35,6 +35,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+engine = None
+tokenizer = None
 
 app.add_middleware(
     CORSMiddleware,
@@ -193,6 +195,7 @@ def process_response(output: str, tools: dict | List[dict] = None, use_tool: boo
 
 @torch.inference_mode()
 async def generate_stream_glm4(params):
+    global engine, tokenizer
     messages = params["messages"]
     tools = params["tools"]
     tool_choice = params["tool_choice"]
@@ -675,6 +678,12 @@ async def parse_output_text(model_id: str, value: str, function_call: ChoiceDelt
     )
     yield "{}".format(chunk.model_dump_json(exclude_unset=True))
     yield '[DONE]'
+
+
+def init_engine(engine_args):
+    global tokenizer, engine
+    engine = AsyncLLMEngine.from_engine_args(engine_args)
+    tokenizer = AutoTokenizer.from_pretrained(engine_args.tokenizer, trust_remote_code=True)
 
 
 if __name__ == "__main__":

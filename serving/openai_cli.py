@@ -4,8 +4,8 @@ import threading
 from datetime import datetime
 
 api_key = "EMPTY"
-# model = "THUDM/glm-4-9b-chat"
-model = "llama3/llama-3-chinese-8b-instruct-v2"
+model = "THUDM/glm-4-9b-chat"
+# model = "llama3/llama-3-chinese-8b-instruct-v2"
 
 def init_client():
     client = OpenAI(
@@ -20,7 +20,7 @@ def generate_content(client):
         model=model,
         messages=[ 
             {"role": "system", "content": "你总是使用嘻哈风格回答问题，回答中带有emoji表情，只使用简体中文进行回复"},
-            {"role": "user", "content": "详细介绍如何使用牙膏刷牙"},
+            {"role": "user", "content": "如何使用牙膏刷牙"},
         ],
         temperature=0.6,
         stream=True,

@@ -24,7 +24,7 @@ if __name__ == "__main__":
     client = init_client()
     responses = client.embeddings.create(
         input=[
-            "你有这么告诉运转的机械进入中国，记住我给出的原理！",
+            "你有这么高速运转的机械进入中国，记住我给出的原理！",
         ],
         model=model)
     for data in responses.data:
