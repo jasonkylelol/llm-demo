@@ -1,4 +1,4 @@
-
+import sys, os
 import argparse
 import shutil
 
@@ -14,10 +14,21 @@ if __name__ == "__main__":
         required=True,
         type=str,
     )
+    parser.add_argument(
+        "--input",
+        help="Path of input files",
+        required=True,
+        type=str,
+    )
     args = parser.parse_args()
 
+    workdir = os.path.join("/workspace", args.root)
+    # os.makedirs(workdir, exist_ok=True)
+    shutil.copytree("template", workdir)
+    shutil.copytree(args.input, os.path.join(workdir, "input"), dirs_exist_ok=True)
+
     index_cli(
-        root=args.root,
+        root=workdir,
         verbose=False,
         resume=None,
         memprofile=False,
