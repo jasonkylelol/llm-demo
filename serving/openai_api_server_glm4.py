@@ -10,7 +10,7 @@ import random
 import string
 
 from vllm import SamplingParams, AsyncEngineArgs, AsyncLLMEngine
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import List, Literal, Optional, Union
@@ -26,25 +26,17 @@ MAX_MODEL_LENGTH = 1024 * 16
 
 # logging.basicConfig(level=logging.DEBUG)
 
+router = APIRouter()
+engine = None
+tokenizer = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
-
-
-app = FastAPI(lifespan=lifespan)
-engine = None
-tokenizer = None
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 def generate_id(prefix: str, k=29) -> str:
@@ -336,19 +328,19 @@ def process_messages(messages, tools=None, tool_choice="none"):
     return processed_messages
 
 
-@app.get("/health")
+@router.get("/health")
 async def health() -> Response:
     """Health check."""
     return Response(status_code=200)
 
 
-@app.get("/v1/models", response_model=ModelList)
+@router.get("/v1/models", response_model=ModelList)
 async def list_models():
     model_card = ModelCard(id="glm-4")
     return ModelList(data=[model_card])
 
 
-@app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
+@router.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def create_chat_completion(request: ChatCompletionRequest):
     if len(request.messages) < 1 or request.messages[-1].role == "assistant":
         raise HTTPException(status_code=400, detail="Invalid request")
@@ -372,7 +364,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
         output = await anext(predict_stream_generator)
         if output:
             return EventSourceResponse(predict_stream_generator, media_type="text/event-stream")
-        logger.debug(f"First result output：\n{output}")
+        logger.debug(f"First result output: \n{output}")
 
         function_call = None
         if output and request.tools:
@@ -680,6 +672,19 @@ async def parse_output_text(model_id: str, value: str, function_call: ChoiceDelt
     yield '[DONE]'
 
 
+def create_llm_app():
+    app = FastAPI(lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.include_router(router)
+    return app
+
+
 def init_engine(engine_args):
     global tokenizer, engine
     engine = AsyncLLMEngine.from_engine_args(engine_args)
@@ -706,4 +711,5 @@ if __name__ == "__main__":
         max_num_batched_tokens=8192
     )
     engine = AsyncLLMEngine.from_engine_args(engine_args)
+    app = create_llm_app()
     uvicorn.run(app, host='0.0.0.0', port=8061, workers=1)

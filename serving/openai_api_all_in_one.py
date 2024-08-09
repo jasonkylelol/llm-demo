@@ -3,8 +3,8 @@ from threading import Thread
 import uvicorn
 from vllm import AsyncEngineArgs
 
-from openai_api_embedding_app import create_app
-from openai_api_server_glm4 import app, init_engine
+from openai_api_embedding_app import create_embedding_app, init_embeddings
+from openai_api_server_glm4 import create_llm_app, init_engine
 
 MODEL_ROOT = "/root/huggingface/models"
 LLM_MODEL_PATH = f"{MODEL_ROOT}/THUDM/glm-4-9b-chat"
@@ -34,8 +34,14 @@ def llm_init():
     init_engine(engine_args)
 
 
+def embedding_init():
+    os.environ['MODEL'] = EMBEDDING_MODEL_PATH
+    init_embeddings()
+
+
 def llm_handler():
-    config = uvicorn.Config(app=app, host='0.0.0.0', port=8061)
+    llm_app = create_llm_app()
+    config = uvicorn.Config(app=llm_app, host='0.0.0.0', port=8061)
     server = uvicorn.Server(config)
     svrs.append(server)
     print(f"[LLM] start api server...")
@@ -43,9 +49,8 @@ def llm_handler():
 
 
 def embedding_handler():
-    os.environ['MODEL'] = EMBEDDING_MODEL_PATH
-    app = create_app()
-    config = uvicorn.Config(app=app, host='0.0.0.0', port=8060)
+    embedding_app = create_embedding_app()
+    config = uvicorn.Config(app=embedding_app, host='0.0.0.0', port=8060)
     server = uvicorn.Server(config)
     svrs.append(server)
     print(f"[Embedding] start api server...")
@@ -62,6 +67,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, signal_handler)
 
     llm_init()
+    embedding_init()
 
     ths = [
         Thread(target=llm_handler),

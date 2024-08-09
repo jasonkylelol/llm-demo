@@ -3,7 +3,7 @@ from starlette.concurrency import run_in_threadpool
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 import os
@@ -22,8 +22,7 @@ BGE_EN_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passa
 BGE_ZH_QUERY_INSTRUCTION = "为这个句子生成表示以用于检索相关文章："
 
 
-def create_app():
-    initialize_embeddings()
+def create_embedding_app():
     app = FastAPI(
         title="Open Text Embeddings API",
         version="1.0.4",
@@ -95,7 +94,7 @@ def str_to_bool(s):
     return map[s.lower()]
 
 
-def initialize_embeddings():
+def init_embeddings():
     global embeddings
     global tokenizer
 
