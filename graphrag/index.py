@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     workdir = os.path.join("/workspace", args.root)
     # os.makedirs(workdir, exist_ok=True)
-    shutil.copytree("template", workdir)
+    shutil.copytree("template", workdir, dirs_exist_ok=True)
     shutil.copytree(args.input, os.path.join(workdir, "input"), dirs_exist_ok=True)
 
     index_cli(
