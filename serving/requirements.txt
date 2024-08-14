@@ -1,0 +1,11 @@
+--index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+uvicorn
+fastapi
+vllm
+langchain
+langchain_huggingface
+langchain_community
+pydantic
+asyncio
+sse_starlette

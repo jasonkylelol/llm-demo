@@ -3,13 +3,25 @@ from threading import Thread
 import uvicorn
 from vllm import AsyncEngineArgs
 
-from openai_api_embedding_app import create_embedding_app, init_embeddings
-from openai_api_server_glm4 import create_llm_app, init_engine
+from openai_api_embedding_app import init_embeddings
+from openai_api_embedding_app import router as embedding_router
+from openai_api_server_glm4 import init_engine, lifespan
+from openai_api_server_glm4 import router as llm_router
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-MODEL_ROOT = "/root/huggingface/models"
-LLM_MODEL_PATH = f"{MODEL_ROOT}/THUDM/glm-4-9b-chat"
+MODEL_ROOT = os.getenv("MODEL_ROOT", "/root/huggingface/models")
+LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/THUDM/glm-4-9b-chat")
+EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", f"{MODEL_ROOT}/maidalun1020/bce-embedding-base_v1")
+
+try:
+    SERVER_PORT = int(os.getenv("SERVER_PORT", 80))
+except (ValueError, TypeError):
+    e = os.getenv("SERVER_PORT")
+    print(f"{type(e)} : {e}")
+    SERVER_PORT = 80
+
 MAX_MODEL_LENGTH = 1024 * 16
-EMBEDDING_MODEL_PATH = f"{MODEL_ROOT}/maidalun1020/bce-embedding-base_v1"
 
 svrs = []
 
@@ -29,7 +41,7 @@ def llm_init():
         disable_log_requests=True,
         max_model_len=MAX_MODEL_LENGTH,
         enable_chunked_prefill=True,
-        max_num_batched_tokens=8192
+        max_num_batched_tokens=MAX_MODEL_LENGTH,
     )
     init_engine(engine_args)
 
@@ -39,21 +51,26 @@ def embedding_init():
     init_embeddings()
 
 
-def llm_handler():
-    llm_app = create_llm_app()
-    config = uvicorn.Config(app=llm_app, host='0.0.0.0', port=8061)
+def handler():
+    app = FastAPI(
+        title="OpenAI Compatible API",
+        lifespan=lifespan,
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.include_router(llm_router)
+    app.include_router(embedding_router)
+
+    host = "0.0.0.0"
+    config = uvicorn.Config(app=app, host=host, port=SERVER_PORT)
     server = uvicorn.Server(config)
     svrs.append(server)
-    print(f"[LLM] start api server...")
-    server.run()
-
-
-def embedding_handler():
-    embedding_app = create_embedding_app()
-    config = uvicorn.Config(app=embedding_app, host='0.0.0.0', port=8060)
-    server = uvicorn.Server(config)
-    svrs.append(server)
-    print(f"[Embedding] start api server...")
+    print(f"[AllInOne] start api server on {host}:{SERVER_PORT}")
     server.run()
 
 
@@ -70,8 +87,7 @@ if __name__ == "__main__":
     embedding_init()
 
     ths = [
-        Thread(target=llm_handler),
-        Thread(target=embedding_handler),
+        Thread(target=handler),
     ]
 
     for th in ths:

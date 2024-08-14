@@ -10,7 +10,7 @@ if __name__ == "__main__":
     
     parser.add_argument(
         "--root",
-        help="If no configuration is defined, the root directory to use for input data and output data. Default value: the current directory",
+        help="Working index directory",
         required=True,
         type=str,
     )

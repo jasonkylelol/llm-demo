@@ -10,7 +10,7 @@ model = "THUDM/glm-4-9b-chat"
 def init_client():
     client = OpenAI(
         api_key=api_key,
-        base_url="http://192.168.0.20:38061/v1",
+        base_url="http://192.168.0.20:38062/v1",
     )
     return client
 
