@@ -17,6 +17,7 @@ class GraphRAGQueryRequest(BaseModel):
     root: str
     method: Literal["local", "global"]
     query: str
+    graphrag_api_base: str
 
 class GraphRAGQueryResponse(BaseModel):
     response: str
@@ -29,11 +30,15 @@ def extract_dir_name_datetime(folder_name):
         return None
 
 
-# curl -X POST -H 'Content-Type:application/json' -d '{"root":"/workspace/test1", "method":"local", "query":"why Musk is essential for OpenAI?"}' http://192.168.0.20:38062/query
+# curl -X POST -H 'Content-Type:application/json' -d '{"root":"/workspace/test1", "method":"local", "query":"why Musk is essential for OpenAI?","graphrag_api_base":"http://192.168.0.20:38063/v1"}' http://192.168.0.20:38062/query
 @app.post("/query", response_model=GraphRAGQueryResponse)
 def query(req: GraphRAGQueryRequest):
     if req.root.strip() == "" or req.query.strip() == "":
         raise HTTPException(status_code=400, detail="Invalid request")
+    if req.graphrag_api_base.strip() == "":
+        raise HTTPException(status_code=400, detail="Param graphrag_api_base is required")
+    
+    os.environ["GRAPHRAG_API_BASE"] = req.graphrag_api_base
     
     print(f"[query] request: {req}")
     if req.method == "local":
