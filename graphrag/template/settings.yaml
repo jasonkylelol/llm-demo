@@ -53,13 +53,13 @@ chunks:
   size: 1200
   overlap: 100
   group_by_columns: [id] # by default, we don't allow chunks to cross documents
-    
+
 input:
   type: file # or blob
-  file_type: text # or csv
+  file_type: ${GRAPHRAG_INPUT_FILE_TYPE} # text or csv
   base_dir: "input"
   file_encoding: utf-8
-  file_pattern: ".*\\.txt$"
+  #file_pattern: ".*\\.txt$"
 
 cache:
   type: file # or blob

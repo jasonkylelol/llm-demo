@@ -4,7 +4,7 @@ import shutil
 
 from graphrag.index.cli import index_cli
 
-# GRAPHRAG_API_BASE=http://192.168.0.20:38063/v1 python index.py --root /workspace/test1 --input /workspace/ragtest/input/
+# GRAPHRAG_INPUT_FILE_TYPE=csv GRAPHRAG_API_BASE=http://192.168.0.20:38063/v1 python index.py --root /workspace/test1 --input /workspace/ragtest/input/
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
