@@ -356,8 +356,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
         tools=request.tools,
         tool_choice=request.tool_choice,
     )
-    # logger.debug(f"==== request ====\n{gen_params}")
-    print(f"==== request ====\n{gen_params}")
+    print(f"----- request -----\n{gen_params}", flush=True)
 
     if request.stream:
         predict_stream_generator = predict_stream(request.model, gen_params)
@@ -423,8 +422,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
             message.content = message.content.replace("\n", "")
             message.content = message.content.replace("```", "")
 
-    # logger.debug(f"==== message ====\n{message}")
-    print(f"==== message ====\n{message}")
+    print(f"----- resp message -----\n{message}", flush=True)
 
     choice_data = ChatCompletionResponseChoice(
         index=0,
@@ -583,7 +581,6 @@ async def predict_stream(model_id, gen_params):
                 object="chat.completion.chunk"
             )
             yield chunk.model_dump_json(exclude_unset=True)
-            # print(f"==== DONE ====\n{message}")
 
     # 工具调用需要额外返回一个字段以对齐 OpenAI 接口
     if is_function_call:
@@ -648,10 +645,9 @@ async def predict_stream(model_id, gen_params):
         )
         yield chunk.model_dump_json(exclude_unset=True)
         yield '[DONE]'
-        # print(f"==== DONE ====\n{message}")
     else:
         yield '[DONE]'
-    print(f"==== full_text ====\n{full_text}")
+    print(f"----- stream text -----\n{full_text}", flush=True)
 
 async def parse_output_text(model_id: str, value: str, function_call: ChoiceDeltaToolCallFunction = None):
     delta = DeltaMessage(role="assistant", content=value)

@@ -102,18 +102,18 @@ def init_embeddings():
         device = os.environ["DEVICE"]
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("Using device:", device)
+    print(f"Using device: {device}", flush=True)
 
     model_name = os.environ.get("MODEL")
     if model_name is None:
         model_name = DEFAULT_MODEL_NAME
-    print("Loading model:", model_name)
+    print(f"Loading embedding model: {model_name}", flush=True)
     normalize_embeddings = str_to_bool(
         os.environ.get("NORMALIZE_EMBEDDINGS", "1"))
     encode_kwargs = {
         "normalize_embeddings": normalize_embeddings
     }
-    print("Normalize embeddings:", normalize_embeddings)
+    print(f"Normalize embeddings: {normalize_embeddings}", flush=True)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     if "e5" in model_name:
         embeddings = HuggingFaceInstructEmbeddings(model_name=model_name,
@@ -166,7 +166,7 @@ def _create_embedding(input: Union[str, List[str]]):
 async def create_embedding(
         request: CreateEmbeddingRequest
 ):
-    print(f"[Embeddings] request: {request}")
+    print(f"[Embeddings] request: {request}", flush=True)
     if pydantic.__version__ > '2.0.0':
         return await run_in_threadpool(
             _create_embedding, **request.model_dump(exclude={"user", "model", "model_config", "dimensions"})

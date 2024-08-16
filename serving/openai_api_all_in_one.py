@@ -18,7 +18,7 @@ try:
     SERVER_PORT = int(os.getenv("SERVER_PORT", 80))
 except (ValueError, TypeError):
     e = os.getenv("SERVER_PORT")
-    print(f"{type(e)} : {e}")
+    print(f"SERVER_PORT: {type(e)} : {e}", flush=True)
     SERVER_PORT = 80
 
 MAX_MODEL_LENGTH = 1024 * 16
@@ -70,13 +70,13 @@ def handler():
     config = uvicorn.Config(app=app, host=host, port=SERVER_PORT)
     server = uvicorn.Server(config)
     svrs.append(server)
-    print(f"[AllInOne] start api server on {host}:{SERVER_PORT}")
+    print(f"[AllInOne] start api server on {host}:{SERVER_PORT}", flush=True)
     server.run()
 
 
 if __name__ == "__main__":
     def signal_handler(sig, frame):
-        print("[Main] shutting down...")
+        print("[Main] shutting down...", flush=True)
         for svr in svrs:
             svr.should_exit = True
 
@@ -96,4 +96,4 @@ if __name__ == "__main__":
     for th in ths:
         th.join()
 
-    print("[Main] exited")
+    print("[Main] exited", flush=True)
