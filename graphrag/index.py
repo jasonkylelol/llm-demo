@@ -39,5 +39,5 @@ if __name__ == "__main__":
         dryrun=False,
         init=False,
         overlay_defaults=False,
-        cli=True,
+        cli=False,
     )
