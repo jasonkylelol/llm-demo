@@ -3,7 +3,7 @@ import uvicorn
 from typing import List, Literal, Optional, Union
 from pydantic import BaseModel, Field
 from fastapi import FastAPI, HTTPException, Response, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from graphrag.query.cli import run_global_search, run_local_search
 from datetime import datetime
 
@@ -18,6 +18,7 @@ class GraphRAGQueryRequest(BaseModel):
     method: Literal["local", "global"]
     query: str
     graphrag_api_base: str
+    graphrag_input_type: str
 
 class GraphRAGQueryResponse(BaseModel):
     response: str
@@ -30,8 +31,8 @@ def extract_dir_name_datetime(folder_name):
         return None
 
 
-# curl -X POST -H 'Content-Type:application/json' -d '{"root":"/workspace/test1", "method":"local", "query":"why Musk is essential for OpenAI?","graphrag_api_base":"http://192.168.0.20:38063/v1"}' http://192.168.0.20:38062/query
-@app.post("/query", response_model=GraphRAGQueryResponse)
+# curl -X POST -H 'Content-Type:application/json' -d '{"root":"/workspace/test1", "method":"local", "query":"why Musk is essential for OpenAI?","graphrag_api_base":"http://192.168.0.20:38063/v1", "graphrag_input_type":"text"}' http://192.168.0.20:38062/query
+@app.post("/query",  response_class=PlainTextResponse)
 def query(req: GraphRAGQueryRequest):
     if req.root.strip() == "" or req.query.strip() == "":
         raise HTTPException(status_code=400, detail="Invalid request")
@@ -39,6 +40,7 @@ def query(req: GraphRAGQueryRequest):
         raise HTTPException(status_code=400, detail="Param graphrag_api_base is required")
     
     os.environ["GRAPHRAG_API_BASE"] = req.graphrag_api_base
+    os.environ["GRAPHRAG_INPUT_FILE_TYPE"] = req.graphrag_input_type
     
     print(f"[query] request: {req}")
     if req.method == "local":
@@ -61,7 +63,8 @@ def query(req: GraphRAGQueryRequest):
         )
     else:
         raise HTTPException(status_code=400, detail="Invalid request")
-    return GraphRAGQueryResponse(response=resp)
+    
+    return resp
 
 
 # curl 'http://192.168.0.20:38062/get-graphml?index=test1&filename=summarized_graph.graphml
