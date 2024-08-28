@@ -1,6 +1,7 @@
 import sys, os
 from typing import Tuple, List
 import gradio as gr
+import signal
 
 sys.path.append(f"{os.path.dirname(__file__)}/..")
 
@@ -8,6 +9,7 @@ from rag.utils import md5sum_str
 from rag.logger import logger
 from rag.model_llama3 import load_llama3, llama3_stream_chat
 from rag.model_glm4 import load_glm4, glm4_stream_chat
+from rag.model_glm4_api import load_glm4_api, glm4_api_stream_chat
 from rag.config import (
     device, model_full, model_name, max_new_tokens,
     embedding_model_name, rerank_model_name,
@@ -97,8 +99,10 @@ def handle_chat(chat_history, kb_file, temperature, embedding_top_k=embedding_to
         f"embedding_top_k: {embedding_top_k} rerank_top_k: {rerank_top_k}")
 
     query, history, searched_docs = generate_query(chat_history, kb_file, embedding_top_k, rerank_top_k)
-
-    if "glm-4" in model_name.lower():
+    thread = None
+    if "glm-4-api" == model_name:
+        streamer = glm4_api_stream_chat(query, history, temperature=temperature)
+    elif "glm-4" in model_name.lower():
         streamer, thread = glm4_stream_chat(query, history, model, tokenizer,
             temperature=temperature, max_new_tokens=max_new_tokens)
     elif "llama3" in model_name.lower():
@@ -118,14 +122,17 @@ def handle_chat(chat_history, kb_file, temperature, embedding_top_k=embedding_to
         knowledge = knowledge.strip()
         generated_text += f"<details><summary>参考信息</summary>{knowledge}</details>"
         yield chat_resp(chat_history, generated_text)
-    thread.join()
+    if thread:
+        thread.join()
 
 
 def init_llm():
     global model, tokenizer
 
-    logger.info(f"Load from {model_full}")
-    if "glm-4" in model_name.lower():
+    logger.info(f"Load from {model_name}")
+    if "glm-4-api" == model_name:
+        load_glm4_api()
+    elif "glm-4" in model_name.lower():
         model, tokenizer = load_glm4(model_full, device)
     elif "llama3" in model_name.lower():
         model, tokenizer = load_llama3(model_full, device)
@@ -231,4 +238,4 @@ if __name__ == "__main__":
 
     app = init_blocks()
     app.queue(max_size=10).launch(server_name='0.0.0.0', server_port=8060, show_api=False,
-        share=False, favicon_path="langchain_demo/icons/shiba.svg")
+        share=False, favicon_path="/root/github/llm-demo/icons/shiba.svg")

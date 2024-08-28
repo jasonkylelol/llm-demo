@@ -3,8 +3,9 @@
 device="cuda"
 
 model_path = "/root/huggingface/models"
-model_name = "THUDM/glm-4-9b-chat"
+# model_name = "THUDM/glm-4-9b-chat"
 # model_name = "shenzhi-wang/Llama3-8B-Chinese-Chat"
+model_name = "glm-4-api"
 model_full = f"{model_path}/{model_name}"
 
 
