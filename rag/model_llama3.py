@@ -33,4 +33,4 @@ def llama3_stream_chat(query, history, model, tokenizer, **generate_kwargs: Any)
     )
     thread = Thread(target=model.generate, kwargs=generation_kwargs)
     thread.start()
-    return streamer, thread
+    return streamer

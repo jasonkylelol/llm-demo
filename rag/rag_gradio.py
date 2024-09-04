@@ -99,14 +99,14 @@ def handle_chat(chat_history, kb_file, temperature, embedding_top_k=embedding_to
         f"embedding_top_k: {embedding_top_k} rerank_top_k: {rerank_top_k}")
 
     query, history, searched_docs = generate_query(chat_history, kb_file, embedding_top_k, rerank_top_k)
-    thread = None
+    
     if "glm-4-api" == model_name:
         streamer = glm4_api_stream_chat(query, history, temperature=temperature)
     elif "glm-4" in model_name.lower():
-        streamer, thread = glm4_stream_chat(query, history, model, tokenizer,
+        streamer = glm4_stream_chat(query, history, model, tokenizer,
             temperature=temperature, max_new_tokens=max_new_tokens)
     elif "llama3" in model_name.lower():
-        streamer, thread = llama3_stream_chat(query, history, model, tokenizer,
+        streamer = llama3_stream_chat(query, history, model, tokenizer,
             temperature=temperature, max_new_tokens=max_new_tokens)
     else:
         raise RuntimeError(f"f{model_name} is not support")
@@ -122,8 +122,6 @@ def handle_chat(chat_history, kb_file, temperature, embedding_top_k=embedding_to
         knowledge = knowledge.strip()
         generated_text += f"<details><summary>参考信息</summary>{knowledge}</details>"
         yield chat_resp(chat_history, generated_text)
-    if thread:
-        thread.join()
 
 
 def init_llm():

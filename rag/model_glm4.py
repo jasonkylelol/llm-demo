@@ -63,5 +63,5 @@ def glm4_stream_chat(query, history, model, tokenizer, **generate_kwargs: Any):
     # logger.info(f"generate_kwargs: {generate_params}")
     thread = Thread(target=model.generate, kwargs=generate_params)
     thread.start()
-    return streamer, thread
+    return streamer
 
