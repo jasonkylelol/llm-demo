@@ -1,4 +1,4 @@
-IMAGE=graphrag:v0.2.2-py310-v1.0
+IMAGE=graphrag:v0.3.2-py310-v2.0
 
 docker run -it --rm --gpus all -h graph-rag --name graph-rag \
     -p 38062:80 \
