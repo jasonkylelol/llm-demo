@@ -14,14 +14,9 @@ run apt update && apt install -y vim curl wget
 
 workdir /workspace
 
-# run cd graphrag && /root/.local/bin/poetry install
-
 add requirements.txt requirements.txt
 run pip install -r requirements.txt
 run pip uninstall -y graphrag
 
 add graphrag graphrag
 add template template
-
-# 85: chunk = self.token_encoder.decode(chunk) # CUSTOM FIX
-# copy graphrag/query/llm/oai/embedding.py /usr/local/lib/python3.10/site-packages/graphrag/query/llm/oai/embedding.py

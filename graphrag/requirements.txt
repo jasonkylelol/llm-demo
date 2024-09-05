@@ -2,5 +2,5 @@
 
 uvicorn
 fastapi
-graphrag
+graphrag==0.3.2
 sse_starlette

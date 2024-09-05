@@ -13,7 +13,6 @@ from datetime import datetime
 from sse_starlette.sse import EventSourceResponse
 from pathlib import Path
 
-
 DEFAULT_COMMUNITY_LEVEL = 2
 DEFAULT_RESPONSE_TYPE = "Multiple Paragraphs"
 
@@ -36,6 +35,28 @@ def extract_dir_name_datetime(folder_name):
         return datetime.strptime(folder_name, "%Y%m%d-%H%M%S")
     except ValueError:
         return None
+
+
+# curl 'http://192.168.0.20:38062/get-graphml?index=test1&filename=summarized_graph.graphml
+@app.get("/get-graphml")
+def get_graphml(
+    index: str = Query(..., description="graph index root"),
+    filename: str = Query("summarized_graph.graphml", description="filename to get")):
+    output_path = os.path.join("/workspace", index, "output")
+    if os.path.exists(output_path):
+        subfolders = [f.path for f in os.scandir(output_path) if f.is_dir()]
+        latest_subfolder = max(
+            (folder for folder in subfolders if extract_dir_name_datetime(os.path.basename(folder))),
+            key=lambda folder: extract_dir_name_datetime(os.path.basename(folder))
+        )
+        target_graphml = os.path.join(latest_subfolder, f"artifacts/{filename}")
+        print(f"target_graphml: {target_graphml}")
+        if os.path.exists(target_graphml) and os.path.isfile(target_graphml):
+            return FileResponse(target_graphml, media_type='application/xml')
+        else:
+            raise HTTPException(status_code=404, detail="File not found") 
+    else:
+        raise HTTPException(status_code=404, detail="File not found")
 
 
 # curl -X POST -H 'Content-Type:application/json' -d '{"root":"/workspace/test", "method":"local", "query":"why Musk is essential for OpenAI?","graphrag_api_base":"https://open.bigmodel.cn/api/paas/v4/", "graphrag_input_type":"text"}' http://192.168.0.20:38062/query
@@ -74,6 +95,7 @@ def query(req: GraphRAGQueryRequest):
         raise HTTPException(status_code=400, detail="Invalid request")
     
     return resp
+
 
 # curl -N -X POST -H 'Content-Type:application/json' -d '{"root":"/workspace/test", "method":"local", "query":"why Musk is essential for OpenAI?","graphrag_api_base":"https://open.bigmodel.cn/api/paas/v4/", "graphrag_input_type":"text"}' 'http://192.168.0.20:38062/query-streaming'
 @app.post("/query-streaming")
@@ -202,28 +224,6 @@ async def global_query(
             yield stream_chunk
     yield "[DONE]"
     print(f"full_response:\n{full_response}\n")
-
-
-# curl 'http://192.168.0.20:38062/get-graphml?index=test1&filename=summarized_graph.graphml
-@app.get("/get-graphml")
-def get_graphml(
-    index: str = Query(..., description="graph index root"),
-    filename: str = Query("summarized_graph.graphml", description="filename to get")):
-    output_path = os.path.join("/workspace", index, "output")
-    if os.path.exists(output_path):
-        subfolders = [f.path for f in os.scandir(output_path) if f.is_dir()]
-        latest_subfolder = max(
-            (folder for folder in subfolders if extract_dir_name_datetime(os.path.basename(folder))),
-            key=lambda folder: extract_dir_name_datetime(os.path.basename(folder))
-        )
-        target_graphml = os.path.join(latest_subfolder, f"artifacts/{filename}")
-        print(f"target_graphml: {target_graphml}")
-        if os.path.exists(target_graphml) and os.path.isfile(target_graphml):
-            return FileResponse(target_graphml, media_type='application/xml')
-        else:
-            raise HTTPException(status_code=404, detail="File not found") 
-    else:
-        raise HTTPException(status_code=404, detail="File not found")
 
 
 if __name__ == "__main__":
