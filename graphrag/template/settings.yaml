@@ -4,9 +4,9 @@ skip_workflows: []
 llm:
   api_key: ${GRAPHRAG_API_KEY}
   type: openai_chat # or azure_openai_chat
-  model: GPT-4
+  model: gpt-4-turbo-preview
   model_supports_json: true # recommended if this is available for your model.
-  max_tokens: 2048
+  max_tokens: 4096
   request_timeout: 300.0
   api_base: ${GRAPHRAG_API_BASE}
   # api_version: 2024-02-15-preview
@@ -15,7 +15,7 @@ llm:
   # tokens_per_minute: 150_000 # set a leaky bucket throttle
   # requests_per_minute: 10_000 # set a leaky bucket throttle
   max_retries: 1
-  max_retry_wait: 2
+  max_retry_wait: 10.0
   # sleep_on_rate_limit_recommendation: true # whether to sleep when azure suggests wait-times
   concurrent_requests: 1 # the number of parallel inflight requests that may be made
   # temperature: 0 # temperature for sampling
@@ -31,6 +31,9 @@ async_mode: threaded # or asyncio
 embeddings:
   ## parallelization: override the global parallelization settings for embeddings
   async_mode: threaded # or asyncio
+  # target: required # or all
+  # batch_size: 16 # the number of documents to send in a single request
+  # batch_max_tokens: 8191 # the maximum number of tokens to send in a single request
   llm:
     api_key: ${GRAPHRAG_API_KEY}
     type: openai_embedding # or azure_openai_embedding
@@ -45,9 +48,6 @@ embeddings:
     # max_retry_wait: 10.0
     # sleep_on_rate_limit_recommendation: true # whether to sleep when azure suggests wait-times
     concurrent_requests: 1 # the number of parallel inflight requests that may be made
-    # batch_size: 16 # the number of documents to send in a single request
-    batch_max_tokens: 8192 # the maximum number of tokens to send in a single request
-    # target: required # or optional
 
 chunks:
   size: 1200
@@ -56,10 +56,10 @@ chunks:
 
 input:
   type: file # or blob
-  file_type: ${GRAPHRAG_INPUT_FILE_TYPE} # text or csv
+  file_type: ${GRAPHRAG_INPUT_FILE_TYPE}
   base_dir: "input"
   file_encoding: utf-8
-  #file_pattern: ".*\\.txt$"
+  # file_pattern: ".*\\.txt$"
 
 cache:
   type: file # or blob
@@ -80,6 +80,8 @@ reporting:
   # container_name: <azure_blob_storage_container_name>
 
 entity_extraction:
+  ## strategy: fully override the entity extraction strategy.
+  ##   type: one of graph_intelligence, graph_intelligence_json and nltk
   ## llm: override the global llm settings for this task
   ## parallelization: override the global parallelization settings for this task
   ## async_mode: override the global async_mode settings for this task
@@ -139,13 +141,13 @@ local_search:
   # llm_temperature: 0 # temperature for sampling
   # llm_top_p: 1 # top-p sampling
   # llm_n: 1 # Number of completions to generate
-  max_tokens: 2048
+  max_tokens: 4096
 
 global_search:
   # llm_temperature: 0 # temperature for sampling
   # llm_top_p: 1 # top-p sampling
   # llm_n: 1 # Number of completions to generate
-  max_tokens: 2048
+  max_tokens: 4096
   # data_max_tokens: 12000
   # map_max_tokens: 1000
   # reduce_max_tokens: 2000
