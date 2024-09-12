@@ -5,4 +5,5 @@ docker run -it --rm --gpus all -h graph-rag --name graph-rag \
     -v /data/lm/github/llm-demo/graphrag/serving.py:/workspace/serving.py \
     -v /data/lm/github/llm-demo/graphrag/index.py:/workspace/index.py \
     -v /data/lm/github/llm-demo/graphrag/ragtest:/workspace/ragtest \
+    -v /data/lm/github/llm-demo/graphrag/graphrag:/workspace/graphrag \
     $IMAGE bash

@@ -10,7 +10,8 @@ from graphrag.index.progress.load_progress_reporter import load_progress_reporte
 from graphrag.index.api import build_index
 from graphrag.config import load_config
 
-# GRAPHRAG_API_KEY=666888 GRAPHRAG_API_BASE=https://open.bigmodel.cn/api/paas/v4/ GRAPHRAG_INPUT_FILE_TYPE=text python index.py --root test --input /workspace/input2/
+# GRAPHRAG_API_BASE=http://192.168.0.20:38063/v1 GRAPHRAG_INPUT_FILE_TYPE=text python index.py --root /workspace/test --input /workspace/chn/ --lang chinese
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
@@ -26,11 +27,21 @@ if __name__ == "__main__":
         required=True,
         type=str,
     )
+    parser.add_argument(
+        "--lang",
+        help="Language for graphrag",
+        type=str,
+    )
     args = parser.parse_args()
 
     workdir = os.path.join("/workspace", args.root)
     # os.makedirs(workdir, exist_ok=True)
-    shutil.copytree("template", workdir, dirs_exist_ok=True)
+
+    if args.lang == "chinese":
+        shutil.copytree("template_zh", workdir, dirs_exist_ok=True)
+    else:
+        shutil.copytree("template", workdir, dirs_exist_ok=True)
+    
     shutil.copytree(args.input, os.path.join(workdir, "input"), dirs_exist_ok=True)
 
     progress_reporter = load_progress_reporter("print")
