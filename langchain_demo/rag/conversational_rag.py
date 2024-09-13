@@ -12,15 +12,17 @@ from langchain_community.document_loaders.text import TextLoader
 
 os.environ["USER_AGENT"] = "DefaultLangchainUserAgent"
 
+api_base_url = "http://192.168.0.20:38063/v1"
+
 llm = ChatOpenAI(
     model="gpt-4o",
     temperature=0.1,
-    base_url="http://192.168.0.20:38063/v1",
+    base_url=api_base_url,
     api_key="EMPTY",
 )
 
 embedding = OpenAIEmbeddings(
-    base_url="http://192.168.0.20:38063/v1",
+    base_url=api_base_url,
     api_key="EMPTY",
     check_embedding_ctx_length=False,
 )
@@ -29,7 +31,7 @@ embedding = OpenAIEmbeddings(
 loader = TextLoader("cache/files/opanai_lawsuit.txt")
 docs = loader.load()
 
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=150)
 splits = text_splitter.split_documents(docs)
 vectorstore = Chroma.from_documents(documents=splits, embedding=embedding)
 retriever = vectorstore.as_retriever()
