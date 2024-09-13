@@ -15,31 +15,31 @@
 
 将输出返回为格式正确的 JSON 格式字符串，格式如下:
 ```json
-    {{
-        "title": <report_title>,
-        "summary": <executive_summary>,
-        "rating": <impact_severity_rating>,
-        "rating_explanation": <rating_explanation>,
-        "findings": [
-            {{
-                "summary":<insight_1_summary>,
-                "explanation": <insight_1_explanation>
-            }},
-            {{
-                "summary":<insight_2_summary>,
-                "explanation": <insight_2_explanation>
-            }}
-        ]
-    }}
+{{
+    "title": <report_title>,
+    "summary": <executive_summary>,
+    "rating": <impact_severity_rating>,
+    "rating_explanation": <rating_explanation>,
+    "findings": [
+        {{
+            "summary":<insight_1_summary>,
+            "explanation": <insight_1_explanation>
+        }},
+        {{
+            "summary":<insight_2_summary>,
+            "explanation": <insight_2_explanation>
+        }}
+    ]
+}}
 ```
 
 # 基本规则
 
 数据支持的点应按如下方式列出其数据引用:
 "这是一个由多个数据引用支持的示例句子 [Data: <dataset name> (record ids); <dataset name> (record ids)]。"
-不要在单个引用中列出超过 5 个记录 ID。相反，列出最相关的前 5 个记录 ID，并添加"+more"以表明还有更多。
+不要在单个引用中列出超过 5 个记录 ID。相反，列出最相关的前 5 个记录 ID，并添加 "+more" 以表明还有更多。
 例如:
-"X 人是 Y 公司的所有者，受到多项不法行为指控 [数据:报告 (1), 实体 (5, 7);关系 (23);声明 (7, 2, 34, 64, 46, +more)]。"
+"X 人是 Y 公司的所有者，受到多项不法行为指控 [数据:报告 (1), 实体 (5, 7); 关系 (23); 声明 (7, 2, 34, 64, 46, +more)]。"
 其中 1, 5, 7, 23, 2, 34, 46 和 64 代表相关数据记录的 ID(而不是索引)。
 不要包含未提供支持证据的信息。
 
@@ -75,7 +75,7 @@ id,source,target,description
         }},
         {{
             "summary": "和谐大会在社区中的作用",
-            "explanation": "和谐大会是这个社区的另一个关键实体，是绿洲广场游行的组织者。和谐大会及其游行的性质可能是一个潜在的威胁源，这取决于他们的目标和他们引起的反应。和谐大会和广场之间的关系对于理解这个社区的动态至关重要。[数据:实体(6)，关系(38，43)]"
+            "explanation": "和谐大会是这个社区的另一个关键实体，是绿洲广场游行的组织者。和谐大会及其游行的性质可能是一个潜在的威胁源，这取决于他们的目标和他们引起的反应。和谐大会和广场之间的关系对于理解这个社区的动态至关重要。[数据:实体(6), 关系(38，43)]"
         }},
         {{
             "summary": "团结游行是重大事件",
@@ -97,7 +97,7 @@ id,source,target,description
 {input_text}
 
 报告应包括以下部分:
-- title: 代表其关键实体的社区名称 - 标题应简短但具体。如果可能，请在标题中包含代表性命名实体。
+- title: 代表其关键实体的社区名称，标题应简短但具体。如果可能，请在标题中包含代表性命名实体。
 - summary: 社区整体结构的执行摘要，其实体如何相互关联，以及与其实体相关的重要信息。
 - rating: 0-10 之间的浮动分数，表示社区内实体造成的影响的严重性。影响是社区的重要性评分。
 - rating_explanation: 用一句话解释影响严重性评级。
@@ -105,31 +105,31 @@ id,source,target,description
 
 将输出返回为格式正确的 JSON 格式字符串，格式如下:
 ```json
-    {{
-        "title": <report_title>,
-        "summary": <executive_summary>,
-        "rating": <impact_severity_rating>,
-        "rating_explanation": <rating_explanation>,
-        "findings": [
-            {{
-                "summary":<insight_1_summary>,
-                "explanation": <insight_1_explanation>
-            }},
-            {{
-                "summary":<insight_2_summary>,
-                "explanation": <insight_2_explanation>
-            }}
-        ]
-    }}
+{{
+    "title": <report_title>,
+    "summary": <executive_summary>,
+    "rating": <impact_severity_rating>,
+    "rating_explanation": <rating_explanation>,
+    "findings": [
+        {{
+            "summary":<insight_1_summary>,
+            "explanation": <insight_1_explanation>
+        }},
+        {{
+            "summary":<insight_2_summary>,
+            "explanation": <insight_2_explanation>
+        }}
+    ]
+}}
 ```
 
 # 基本规则
 
 数据支持的点应按如下方式列出其数据引用:
-"这是一个由多个数据引用支持的示例句子 [数据:<数据集名称> (记录 ID);<数据集名称> (记录 ID)]。"
-不要在单个引用中列出超过 5 个记录 ID。相反，列出前 5 个最相关的记录 ID，并添加"+more"以表明还有更多。
+"这是一个由多个数据引用支持的示例句子 [数据: <数据集名称> (记录 ID); <数据集名称> (记录 ID)]。"
+不要在单个引用中列出超过 5 个记录 ID。相反，列出前 5 个最相关的记录 ID，并添加 "+more" 以表明还有更多。
 例如:
-"X 人是 Y 公司的所有者，受到多项不法行为指控 [数据:报告 (1), 实体 (5, 7);关系 (23);声明 (7, 2, 34, 64, 46, +more)]。"
+"X 人是 Y 公司的所有者，受到多项不法行为指控 [数据:报告 (1), 实体 (5, 7); 关系 (23); 声明 (7, 2, 34, 64, 46, +more)]。"
 其中 1, 5, 7, 23, 2, 34, 46 和 64 代表相关数据记录的 ID(而不是索引)。
 不要包含未提供支持证据的信息。
 

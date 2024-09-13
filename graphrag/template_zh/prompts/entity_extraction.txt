@@ -3,9 +3,9 @@
 
 -步骤-
 1. 识别所有实体。对于每个已识别的实体，提取以下信息:
-- 实体名称:实体名称
-- 实体类型:以下类型之一:[{entity_types}]
-- 实体描述:实体属性和活动的综合描述
+- entity_name: 实体名称
+- entity_type: 以下类型之一: [{entity_types}]
+- entity_description: 实体属性和活动的综合描述
 将每个实体格式化为 ("entity"{tuple_delimiter} <entity_name>{tuple_delimiter} <entity_type>{tuple_delimiter} <entity_description>)
 
 2. 从步骤 1 中识别的实体中，识别所有 *明显相关* 的 (source_entity, target_entity) 对。
@@ -26,7 +26,7 @@
 示例 1:
 Entity_types: ORGANIZATION，PERSON
 Text:
-新西兰中央机构计划于周一和周四召开会议，该机构计划于周四下午 1:30(太平洋夏令时间)发布其最新政策决定，随后将举行新闻发布会，中央机构主席马丁将回答问题。投资者预计市场策略委员会将维持基准利率在 3.5%-3.75% 的范围内。
+新西兰中央机构计划于周一和周四召开会议，该机构计划于周四下午 1:30 (太平洋夏令时间)发布其最新政策决定，随后将举行新闻发布会，中央机构主席马丁将回答问题。投资者预计市场策略委员会将维持基准利率在 3.5%-3.75% 的范围内。
 ######################
 Output:
 ("entity"{tuple_delimiter}中央机构{tuple_delimiter}组织{tuple_delimiter}中央机构是新西兰的联邦储备银行，该机构在周一和周四制定利率)
@@ -55,7 +55,7 @@ Output:
 
 
 #####################
-示例3:
+示例 3:
 Entity_types: ORGANIZATION, GEO, PERSON
 Text:
 五名奥雷利亚人被关押在菲鲁扎巴德 8 年，被广泛视为人质，他们正在返回奥雷利亚的途中。

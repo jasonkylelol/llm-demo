@@ -40,6 +40,7 @@ if __name__ == "__main__":
     if args.lang == "chinese":
         shutil.copytree("template_zh", workdir, dirs_exist_ok=True)
     else:
+        print(f"using default language: English")
         shutil.copytree("template", workdir, dirs_exist_ok=True)
     
     shutil.copytree(args.input, os.path.join(workdir, "input"), dirs_exist_ok=True)

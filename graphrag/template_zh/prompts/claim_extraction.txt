@@ -47,8 +47,8 @@
 -实际数据-
 
 使用以下输入作为您的答案。
-实体规范:{entity_specs}
-声明描述:{claim_description}
-文本:{input_text}
+实体规范: {entity_specs}
+声明描述: {claim_description}
+文本: {input_text}
 
 输出:
