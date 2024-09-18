@@ -13,18 +13,22 @@ from langchain_community.document_loaders.text import TextLoader
 
 os.environ["USER_AGENT"] = "DefaultLangchainUserAgent"
 
-api_base_url = "http://192.168.0.20:38063/v1"
+api_base_url = os.getenv("API_BASE")
+api_key = os.getenv("API_KEY")
+llm_model = os.getenv("LLM_MODEL")
+embedding_model = os.getenv("EMBEDDING_MODEL")
 
 llm = ChatOpenAI(
-    model="gpt-4o",
+    model=llm_model,
     temperature=0.1,
     base_url=api_base_url,
-    api_key="EMPTY",
+    api_key=api_key,
 )
 
 embedding = OpenAIEmbeddings(
+    model=embedding_model,
     base_url=api_base_url,
-    api_key="EMPTY",
+    api_key=api_key,
     check_embedding_ctx_length=False,
 )
 
@@ -115,11 +119,10 @@ conversational_rag_chain = RunnableWithMessageHistory(
 #     "What would you do if you were Mr. Musk?",
 #     "in my opinion, require OpenAI to open up its technology to others, which is much more valuable than repay him the money he donated. what do you think?",
 # ]
-
 questions = [
     "小米汽车都有哪些车型？价格分别是多少？",
     "如果我每天通勤150公里，希望一周只充一次电，价格在25万元以下，我应该选择哪款车型？",
-    "每天通勤150公里，五天工作日里程就会达到750公里了，超出了700公里的续航",
+    "如果通勤距离降低到50公里，应该选哪款具有性价比？",
 ]
 
 for idx, question in enumerate(questions):
