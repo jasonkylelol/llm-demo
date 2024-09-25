@@ -15,8 +15,8 @@ os.environ["USER_AGENT"] = "DefaultLangchainUserAgent"
 
 api_base_url = os.getenv("API_BASE")
 api_key = os.getenv("API_KEY")
-llm_model = os.getenv("LLM_MODEL")
-embedding_model = os.getenv("EMBEDDING_MODEL")
+llm_model = os.getenv("LLM_MODEL") or "glm-4-flash"
+embedding_model = os.getenv("EMBEDDING_MODEL") or "embedding-3"
 
 llm = ChatOpenAI(
     model=llm_model,
@@ -54,9 +54,9 @@ print(f"vectorstore by Chroma")
 #     "just reformulate it if needed and otherwise return it as is."
 # )
 contextualize_q_system_prompt = (
-    "给定一个聊天记录和最新的用户问题（可能引用聊天记录中的上下文），"
-    "制定一个独立问题，该问题无需聊天记录即可理解。"
-    "不要回答问题，只需根据需要重新表述此问题，如果无法表述就按原样返回。"
+    "给定一个聊天记录和与聊天记录有关的用户问题，重新生成一个独立的问题，"
+    "该问题囊括了聊天记录的关键信息，使得该问题无需聊天记录即可理解。"
+    "不要回答此问题，只需重新表述此问题，如果无法表述就按原样返回。"
 )
 
 contextualize_q_prompt = ChatPromptTemplate.from_messages(
@@ -81,10 +81,8 @@ history_aware_retriever = create_history_aware_retriever(
 #     "{context}"
 # )
 system_prompt = (
-    "你是擅长回答问题的智能助手。使用以下检索到的上下文信息来回答问题。"
-    "如果你不知道答案，就说不知道。最多使用三句话并保持答案简洁和准确。"
-    "\n##################################################\n\n"
-    "{context}"
+    "你是擅长回答问题的智能助手，使用提供的已知信息来回答问题。"
+    "如果你不知道答案，就说不知道。请保持答案简洁和准确。\n以下是已知信息:\n\n{context}"
 )
 
 qa_prompt = ChatPromptTemplate.from_messages(
@@ -121,8 +119,8 @@ conversational_rag_chain = RunnableWithMessageHistory(
 # ]
 questions = [
     "小米汽车都有哪些车型？价格分别是多少？",
-    "如果我每天通勤150公里，希望一周只充一次电，价格在25万元以下，我应该选择哪款车型？",
-    "如果通勤距离降低到50公里，应该选哪款具有性价比？",
+    "预算25万可以选择什么？",
+    "此版本的续航是多少？",
 ]
 
 for idx, question in enumerate(questions):
