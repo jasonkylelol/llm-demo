@@ -2,16 +2,21 @@ import sys, os, signal
 from threading import Thread
 import uvicorn
 from vllm import AsyncEngineArgs
-
-from openai_api_embedding_app import init_embeddings
-from openai_api_embedding_app import router as embedding_router
-from openai_api_server_glm4 import init_engine, lifespan
-from openai_api_server_glm4 import router as llm_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 MODEL_ROOT = os.getenv("MODEL_ROOT", "/root/huggingface/models")
-LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/THUDM/glm-4-9b-chat")
+
+# from openai_api_glm4_app import init_engine, lifespan
+# from openai_api_glm4_app import router as llm_router
+# LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/THUDM/glm-4-9b-chat")
+
+from openai_api_qwen2_app import init_engine, lifespan
+from openai_api_qwen2_app import router as llm_router
+LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/Qwen/Qwen2.5-7B-Instruct")
+
+from openai_api_embedding_app import init_embeddings
+from openai_api_embedding_app import router as embedding_router
 EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", f"{MODEL_ROOT}/maidalun1020/bce-embedding-base_v1")
 
 try:
@@ -29,15 +34,12 @@ def llm_init():
     engine_args = AsyncEngineArgs(
         model=LLM_MODEL_PATH,
         tokenizer=LLM_MODEL_PATH,
-        # 如果你有多张显卡，可以在这里设置成你的显卡数量
         tensor_parallel_size=1,
         dtype="bfloat16",
         trust_remote_code=True,
-        # 占用显存的比例，请根据你的显卡显存大小设置合适的值，例如，如果你的显卡有80G，您只想使用24G，请按照24/80=0.3设置
         gpu_memory_utilization=0.9,
         enforce_eager=True,
         worker_use_ray=False,
-        engine_use_ray=False,
         disable_log_requests=True,
         max_model_len=MAX_MODEL_LENGTH,
         enable_chunked_prefill=True,

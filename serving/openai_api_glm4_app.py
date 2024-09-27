@@ -133,16 +133,6 @@ class ChatCompletionRequest(BaseModel):
     repetition_penalty: Optional[float] = 1.1
 
 
-class InvalidScoreLogitsProcessor(LogitsProcessor):
-    def __call__(
-            self, input_ids: torch.LongTensor, scores: torch.FloatTensor
-    ) -> torch.FloatTensor:
-        if torch.isnan(scores).any() or torch.isinf(scores).any():
-            scores.zero_()
-            scores[..., 5] = 5e4
-        return scores
-
-
 def process_response(output: str, tools: dict | List[dict] = None, use_tool: bool = False) -> Union[str, dict]:
     lines = output.strip().split("\n")
     arguments_json = None
