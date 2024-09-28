@@ -412,7 +412,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
             message.content = message.content.replace("\n", "")
             message.content = message.content.replace("```", "")
 
-    print(f"----- resp message -----\n{message}", flush=True)
+    print(f"----- response -----\n{message}\n", flush=True)
 
     choice_data = ChatCompletionResponseChoice(
         index=0,
@@ -637,7 +637,8 @@ async def predict_stream(model_id, gen_params):
         yield '[DONE]'
     else:
         yield '[DONE]'
-    print(f"----- stream text -----\n{full_text}", flush=True)
+    print(f"----- streaming response -----\n{full_text}\n", flush=True)
+
 
 async def parse_output_text(model_id: str, value: str, function_call: ChoiceDeltaToolCallFunction = None):
     delta = DeltaMessage(role="assistant", content=value)
@@ -658,44 +659,7 @@ async def parse_output_text(model_id: str, value: str, function_call: ChoiceDelt
     yield '[DONE]'
 
 
-def create_llm_app():
-    app = FastAPI(lifespan=lifespan)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    app.include_router(router)
-    return app
-
-
 def init_engine(engine_args):
     global tokenizer, engine
     engine = AsyncLLMEngine.from_engine_args(engine_args)
     tokenizer = AutoTokenizer.from_pretrained(engine_args.tokenizer, trust_remote_code=True)
-
-
-if __name__ == "__main__":
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, trust_remote_code=True)
-    engine_args = AsyncEngineArgs(
-        model=MODEL_PATH,
-        tokenizer=MODEL_PATH,
-        # 如果你有多张显卡，可以在这里设置成你的显卡数量
-        tensor_parallel_size=1,
-        dtype="bfloat16",
-        trust_remote_code=True,
-        # 占用显存的比例，请根据你的显卡显存大小设置合适的值，例如，如果你的显卡有80G，您只想使用24G，请按照24/80=0.3设置
-        gpu_memory_utilization=0.9,
-        enforce_eager=True,
-        worker_use_ray=False,
-        engine_use_ray=False,
-        disable_log_requests=True,
-        max_model_len=MAX_MODEL_LENGTH,
-        enable_chunked_prefill=True,
-        max_num_batched_tokens=8192
-    )
-    engine = AsyncLLMEngine.from_engine_args(engine_args)
-    app = create_llm_app()
-    uvicorn.run(app, host='0.0.0.0', port=8061, workers=1)

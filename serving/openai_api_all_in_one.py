@@ -7,13 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 MODEL_ROOT = os.getenv("MODEL_ROOT", "/root/huggingface/models")
 
-# from openai_api_glm4_app import init_engine, lifespan
-# from openai_api_glm4_app import router as llm_router
-# LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/THUDM/glm-4-9b-chat")
+from openai_api_glm4_app import init_engine, lifespan
+from openai_api_glm4_app import router as llm_router
+LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/THUDM/glm-4-9b-chat")
 
-from openai_api_qwen2_app import init_engine, lifespan
-from openai_api_qwen2_app import router as llm_router
-LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/Qwen/Qwen2.5-7B-Instruct")
+# from openai_api_qwen2_app import init_engine, lifespan
+# from openai_api_qwen2_app import router as llm_router
+# LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/Qwen/Qwen2.5-7B-Instruct")
 
 from openai_api_embedding_app import init_embeddings
 from openai_api_embedding_app import router as embedding_router
