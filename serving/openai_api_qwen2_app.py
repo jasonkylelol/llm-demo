@@ -203,7 +203,7 @@ async def generate_stream(model_id, params):
         )
         yield chunk.model_dump_json(exclude_unset=True)
 
-    # print(f"{full_text}")
+    print(f"----- response -----\n{generate_text}\n", flush=True)
     # gc.collect()
     # torch.cuda.empty_cache()
 
@@ -224,7 +224,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
         tools=request.tools,
         tool_choice=request.tool_choice,
     )
-    print(f"----- request -----\n{gen_params}", flush=True)
+    print(f"----- request -----\n{gen_params}\n", flush=True)
 
     if request.stream:
         stream_generator = generate_stream(request.model, gen_params)
@@ -242,6 +242,13 @@ async def create_chat_completion(request: ChatCompletionRequest):
         role="assistant",
         content=response_text,
     )
+    if message.content and isinstance(message.content, str):
+        message.content = message.content.strip()
+        prefix = "```json"
+        if message.content.startswith(prefix):
+            message.content = message.content[len(prefix):]
+            message.content = message.content.replace("\n", "")
+            message.content = message.content.replace("```", "")
     choice_data = ChatCompletionResponseChoice(
         index=0,
         message=message,

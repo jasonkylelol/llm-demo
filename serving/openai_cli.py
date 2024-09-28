@@ -9,7 +9,7 @@ model = "glm-4-flash"
 def init_client():
     client = OpenAI(
         api_key=api_key,
-        base_url="http://192.168.0.20:38060/v1",
+        base_url="http://192.168.0.20:38063/v1",
     )
     return client
 
@@ -55,9 +55,11 @@ def stream_print(s):
     sys.stdout.write(s)
     sys.stdout.flush()
 
+
 def xprint(msg):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{now}] {msg}", flush=True)
+
 
 if __name__ == "__main__":
     thread_num = 1

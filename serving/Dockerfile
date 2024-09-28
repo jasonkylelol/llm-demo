@@ -17,5 +17,5 @@ env EMBEDDING_MODEL_PATH=/workspace/models/embedding
 
 CMD ["python", "openai_api_all_in_one.py"]
 
-# docker build -t graphrag/openai-compatible-api:v1.0 .
-# docker run -it --rm --gpus device=3 -e SERVER_PORT=8063 -p 38063:8063 graphrag/openai-compatible-api:v1.0
+# docker build -t graphrag/openai-compatible-api:v2.0 .
+# docker run -it --rm --gpus device=3 -e SERVER_PORT=8063 -p 38063:8063 graphrag/openai-compatible-api:v2.0
