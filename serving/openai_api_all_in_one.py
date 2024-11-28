@@ -7,17 +7,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 MODEL_ROOT = os.getenv("MODEL_ROOT", "/root/huggingface/models")
 
-from openai_api_glm4_app import init_engine, lifespan
-from openai_api_glm4_app import router as llm_router
-LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/THUDM/glm-4-9b-chat")
+#from openai_api_glm4_app import init_engine, lifespan
+#from openai_api_glm4_app import router as llm_router
+#LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/THUDM/glm-4-9b-chat")
 
-# from openai_api_qwen2_app import init_engine, lifespan
-# from openai_api_qwen2_app import router as llm_router
-# LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/Qwen/Qwen2.5-7B-Instruct")
+from openai_api_qwen2_app import init_engine, lifespan
+from openai_api_qwen2_app import router as llm_router
+LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/Qwen/Qwen2.5-7B-Instruct")
 
 from openai_api_embedding_app import init_embeddings
 from openai_api_embedding_app import router as embedding_router
-EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", f"{MODEL_ROOT}/maidalun1020/bce-embedding-base_v1")
+# EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", f"{MODEL_ROOT}/maidalun1020/bce-embedding-base_v1")
+EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", f"{MODEL_ROOT}/TencentBAC/Conan-embedding-v1")
 
 try:
     SERVER_PORT = int(os.getenv("SERVER_PORT", 80))
