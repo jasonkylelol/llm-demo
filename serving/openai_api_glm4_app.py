@@ -660,7 +660,3 @@ def init_engine(engine_args):
     global tokenizer, engine
     engine = AsyncLLMEngine.from_engine_args(engine_args)
     tokenizer = AutoTokenizer.from_pretrained(engine_args.tokenizer, trust_remote_code=True)
-
-
-def stop_engine():
-    engine.shutdown_background_loop()

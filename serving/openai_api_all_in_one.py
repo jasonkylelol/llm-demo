@@ -8,11 +8,11 @@ import torch
 
 MODEL_ROOT = os.getenv("MODEL_ROOT", "/root/huggingface/models")
 
-# from openai_api_glm4_app import init_engine, stop_engine, lifespan
+# from openai_api_glm4_app import init_engine, lifespan
 # from openai_api_glm4_app import router as llm_router
 # LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/THUDM/glm-4-9b-chat")
 
-from openai_api_qwen2_app import init_engine, stop_engine, lifespan
+from openai_api_qwen2_app import init_engine, lifespan
 from openai_api_qwen2_app import router as llm_router
 LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/Qwen/Qwen2.5-7B-Instruct")
 
@@ -50,6 +50,7 @@ def llm_init():
         max_model_len=MAX_MODEL_LENGTH,
         enable_chunked_prefill=True,
         max_num_batched_tokens=MAX_MODEL_LENGTH,
+        disable_custom_all_reduce=True,
     )
     print(f"[AsyncEngineArgs] tensor_parallel_size: {engine_args.tensor_parallel_size} "
         f"gpu_memory_utilization: {engine_args.gpu_memory_utilization} ")
@@ -86,7 +87,6 @@ def handler():
 if __name__ == "__main__":
     def signal_handler(sig, frame):
         print("[Main] shutting down...", flush=True)
-        stop_engine()
         for svr in svrs:
             svr.should_exit = True
 

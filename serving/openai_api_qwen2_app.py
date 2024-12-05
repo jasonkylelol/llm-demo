@@ -104,10 +104,6 @@ def init_engine(engine_args):
     tokenizer = AutoTokenizer.from_pretrained(engine_args.tokenizer, trust_remote_code=True)
 
 
-def stop_engine():
-    engine.shutdown_background_loop()
-
-
 def generate_id(prefix: str, k=29) -> str:
     suffix = ''.join(random.choices(string.ascii_letters + string.digits, k=k))
     return f"{prefix}{suffix}"

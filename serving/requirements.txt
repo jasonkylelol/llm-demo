@@ -11,5 +11,3 @@ langchain_community
 pydantic
 asyncio
 sse_starlette
-
-# pip install --upgrade torch==2.3.1 transformers==4.44.2 vllm
