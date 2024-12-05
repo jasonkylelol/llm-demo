@@ -4,21 +4,22 @@ import uvicorn
 from vllm import AsyncEngineArgs
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import torch
 
 MODEL_ROOT = os.getenv("MODEL_ROOT", "/root/huggingface/models")
 
-#from openai_api_glm4_app import init_engine, lifespan
-#from openai_api_glm4_app import router as llm_router
-#LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/THUDM/glm-4-9b-chat")
+# from openai_api_glm4_app import init_engine, stop_engine, lifespan
+# from openai_api_glm4_app import router as llm_router
+# LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/THUDM/glm-4-9b-chat")
 
-from openai_api_qwen2_app import init_engine, lifespan
+from openai_api_qwen2_app import init_engine, stop_engine, lifespan
 from openai_api_qwen2_app import router as llm_router
 LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", f"{MODEL_ROOT}/Qwen/Qwen2.5-7B-Instruct")
 
 from openai_api_embedding_app import init_embeddings
 from openai_api_embedding_app import router as embedding_router
-# EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", f"{MODEL_ROOT}/maidalun1020/bce-embedding-base_v1")
-EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", f"{MODEL_ROOT}/TencentBAC/Conan-embedding-v1")
+EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", f"{MODEL_ROOT}/maidalun1020/bce-embedding-base_v1")
+
 
 try:
     SERVER_PORT = int(os.getenv("SERVER_PORT", 80))
@@ -32,10 +33,14 @@ MAX_MODEL_LENGTH = 1024 * 16
 svrs = []
 
 def llm_init():
+    tensor_parallel_size = torch.cuda.device_count()
+    os.environ["NCCL_SHM_DISABLE"] = "1"
+    os.environ["NCCL_P2P_DISABLE"] = "1"
+
     engine_args = AsyncEngineArgs(
         model=LLM_MODEL_PATH,
         tokenizer=LLM_MODEL_PATH,
-        tensor_parallel_size=1,
+        tensor_parallel_size=tensor_parallel_size,
         dtype="bfloat16",
         trust_remote_code=True,
         gpu_memory_utilization=0.9,
@@ -46,12 +51,13 @@ def llm_init():
         enable_chunked_prefill=True,
         max_num_batched_tokens=MAX_MODEL_LENGTH,
     )
+    print(f"[AsyncEngineArgs] tensor_parallel_size: {engine_args.tensor_parallel_size} "
+        f"gpu_memory_utilization: {engine_args.gpu_memory_utilization} ")
     init_engine(engine_args)
 
 
 def embedding_init():
-    os.environ['MODEL'] = EMBEDDING_MODEL_PATH
-    init_embeddings()
+    init_embeddings(EMBEDDING_MODEL_PATH)
 
 
 def handler():
@@ -80,6 +86,7 @@ def handler():
 if __name__ == "__main__":
     def signal_handler(sig, frame):
         print("[Main] shutting down...", flush=True)
+        stop_engine()
         for svr in svrs:
             svr.should_exit = True
 
@@ -88,15 +95,6 @@ if __name__ == "__main__":
 
     llm_init()
     embedding_init()
-
-    ths = [
-        Thread(target=handler),
-    ]
-
-    for th in ths:
-        th.start()
-
-    for th in ths:
-        th.join()
+    handler()
 
     print("[Main] exited", flush=True)

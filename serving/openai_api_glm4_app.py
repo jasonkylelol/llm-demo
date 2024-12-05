@@ -193,13 +193,10 @@ async def generate_stream_glm4(params):
         "best_of": 1,
         "presence_penalty": 1.0,
         "frequency_penalty": 0.0,
+        "repetition_penalty": repetition_penalty,
         "temperature": temperature,
         "top_p": top_p,
         "top_k": -1,
-        "repetition_penalty": repetition_penalty,
-        "use_beam_search": False,
-        "length_penalty": 1,
-        "early_stopping": False,
         "stop_token_ids": [151329, 151336, 151338],
         "ignore_eos": False,
         "max_tokens": max_new_tokens,
@@ -208,7 +205,7 @@ async def generate_stream_glm4(params):
         "skip_special_tokens": True,
     }
     sampling_params = SamplingParams(**params_dict)
-    async for output in engine.generate(inputs=inputs, sampling_params=sampling_params, request_id=f"{time.time()}"):
+    async for output in engine.generate(inputs, sampling_params=sampling_params, request_id=f"{time.time()}"):
         output_len = len(output.outputs[0].token_ids)
         input_len = len(output.prompt_token_ids)
         ret = {
@@ -663,3 +660,7 @@ def init_engine(engine_args):
     global tokenizer, engine
     engine = AsyncLLMEngine.from_engine_args(engine_args)
     tokenizer = AutoTokenizer.from_pretrained(engine_args.tokenizer, trust_remote_code=True)
+
+
+def stop_engine():
+    engine.shutdown_background_loop()

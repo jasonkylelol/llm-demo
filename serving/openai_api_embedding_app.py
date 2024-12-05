@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
-import os
 import torch
 
 # from fastapi.middleware.gzip import GZipMiddleware
@@ -15,7 +14,7 @@ from transformers import AutoTokenizer
 
 router = APIRouter()
 
-DEFAULT_MODEL_NAME = "intfloat/e5-large-v2"
+NORMALIZE_EMBEDDINGS = "1"
 E5_EMBED_INSTRUCTION = "passage: "
 E5_QUERY_INSTRUCTION = "query: "
 BGE_EN_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
@@ -85,6 +84,7 @@ class CreateEmbeddingResponse(BaseModel):
 
 embeddings = None
 tokenizer = None
+model_name = ""
 
 
 def str_to_bool(s):
@@ -94,26 +94,20 @@ def str_to_bool(s):
     return map[s.lower()]
 
 
-def init_embeddings():
+def init_embeddings(model_path):
     global embeddings
     global tokenizer
+    global model_name
 
-    if "DEVICE" in os.environ:
-        device = os.environ["DEVICE"]
-    else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}", flush=True)
 
-    model_name = os.environ.get("MODEL")
-    if model_name is None:
-        model_name = DEFAULT_MODEL_NAME
+    model_name = model_path
     print(f"Loading embedding model: {model_name}", flush=True)
-    normalize_embeddings = str_to_bool(
-        os.environ.get("NORMALIZE_EMBEDDINGS", "1"))
     encode_kwargs = {
-        "normalize_embeddings": normalize_embeddings
+        "normalize_embeddings": NORMALIZE_EMBEDDINGS
     }
-    print(f"Normalize embeddings: {normalize_embeddings}", flush=True)
+    
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     if "e5" in model_name:
         embeddings = HuggingFaceInstructEmbeddings(model_name=model_name,
@@ -139,9 +133,7 @@ def init_embeddings():
 
 def _create_embedding(input: Union[str, List[str]]):
     global embeddings
-    model_name = os.environ.get("MODEL")
-    if model_name is None:
-        model_name = DEFAULT_MODEL_NAME
+    
     model_name_short = model_name.split("/")[-1]
     if isinstance(input, str):
         tokens = tokenizer.tokenize(input)

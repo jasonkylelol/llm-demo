@@ -9,7 +9,7 @@ model = "glm-4-flash"
 def init_client():
     client = OpenAI(
         api_key=api_key,
-        base_url="http://192.168.0.20:38063/v1",
+        base_url="http://192.168.0.20:38060/v1",
     )
     return client
 

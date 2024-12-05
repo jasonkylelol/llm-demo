@@ -31,7 +31,7 @@ class ModelCard(BaseModel):
 
 class ModelList(BaseModel):
     object: str = "list"
-    data: List[ModelCard] = ["qwen-2.5"]
+    data: List[ModelCard] = ["Qwen2.5"]
 
 class FunctionCall(BaseModel):
     name: Optional[str] = None
@@ -104,6 +104,10 @@ def init_engine(engine_args):
     tokenizer = AutoTokenizer.from_pretrained(engine_args.tokenizer, trust_remote_code=True)
 
 
+def stop_engine():
+    engine.shutdown_background_loop()
+
+
 def generate_id(prefix: str, k=29) -> str:
     suffix = ''.join(random.choices(string.ascii_letters + string.digits, k=k))
     return f"{prefix}{suffix}"
@@ -119,20 +123,21 @@ async def lifespan(app: FastAPI):
 
 @router.get("/health")
 async def health() -> Response:
-    """Health check."""
+    try:
+        await engine.check_health()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="model not ready") from e
     return Response(status_code=200)
 
 
 @router.get("/v1/models", response_model=ModelList)
 async def list_models():
-    model_card = ModelCard(id="qwen-2.5")
+    model_card = ModelCard(id="Qwen2.5")
     return ModelList(data=[model_card])
 
 
 @torch.inference_mode()
 async def generate_stream(model_id, params):
-    global engine, tokenizer
-
     messages = params["messages"]
     tools = params["tools"]
     tool_choice = params["tool_choice"]
@@ -149,13 +154,10 @@ async def generate_stream(model_id, params):
         "best_of": 1,
         "presence_penalty": 1.0,
         "frequency_penalty": 0.0,
+        "repetition_penalty": repetition_penalty,
         "temperature": temperature,
         "top_p": top_p,
         "top_k": -1,
-        "repetition_penalty": repetition_penalty,
-        "use_beam_search": False,
-        "length_penalty": 1,
-        "early_stopping": False,
         # "stop_token_ids": [151645],
         "ignore_eos": False,
         "max_tokens": max_new_tokens,
@@ -165,7 +167,7 @@ async def generate_stream(model_id, params):
     }
     sampling_params = SamplingParams(**params_dict)
     generate_text = ""
-    async for output in engine.generate(inputs=inputs, sampling_params=sampling_params, request_id=f"{time.time()}"):
+    async for output in engine.generate(inputs, sampling_params=sampling_params, request_id=f"{time.time()}"):
         finish_reason = output.outputs[0].finish_reason
         output_len = len(output.outputs[0].token_ids)
         input_len = len(output.prompt_token_ids)
